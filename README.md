@@ -61,6 +61,24 @@ npm run install:all
 
 ## 3. Configure
 
+### Quick path
+
+```bash
+npm run setup
+```
+
+Creates both `.env` files from their examples and prompts for the three values
+that cannot be defaulted — your Google client ID (written to both files, since
+they must match), the Gmail address that becomes the store admin, and the API
+port. Re-run it any time; it edits values in place. It also takes flags for
+non-interactive use:
+
+```bash
+npm run setup -- --google-client-id=123-abc.apps.googleusercontent.com --admin-email=me@gmail.com --port=5001
+```
+
+To configure by hand instead, follow the two sections below.
+
 ### Backend
 
 ```bash

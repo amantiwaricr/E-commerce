@@ -5,6 +5,7 @@
   "description": "Fresh Meat Nepal - MERN e-commerce platform for fresh and processed meat products in Nepal",
   "scripts": {
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "setup": "node scripts/setup.js",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "dev": "npm-run-all --parallel dev:server dev:client",
