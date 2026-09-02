@@ -1,0 +1,23 @@
+{
+  "name": "fresh-meat-nepal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fresh Meat Nepal - MERN e-commerce platform for fresh and processed meat products in Nepal",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev": "npm-run-all --parallel dev:server dev:client",
+    "seed": "npm run seed --prefix server",
+    "test": "npm test --prefix server",
+    "build": "npm run build --prefix client",
+    "start": "npm start --prefix server"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
