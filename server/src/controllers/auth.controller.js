@@ -30,7 +30,9 @@ const verifyGoogleCredential = async (credential) => {
 const googleLogin = asyncHandler(async (req, res) => {
   const { credential } = req.body;
   if (!credential) throw ApiError.badRequest('Google credential is required');
-  if (!env.googleClientId) throw ApiError.internal('Google sign-in is not configured on the server');
+  if (!env.googleConfigured) {
+    throw ApiError.internal('Google sign-in is not configured: set a real GOOGLE_CLIENT_ID in server/.env');
+  }
 
   let payload;
   try {

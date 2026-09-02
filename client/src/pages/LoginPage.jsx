@@ -4,7 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Loader from '../components/Loader';
-import { GOOGLE_CLIENT_ID, STORE_NAME } from '../config';
+import { IS_GOOGLE_CONFIGURED, STORE_NAME } from '../config';
 
 export default function LoginPage() {
   const { isAuthenticated, loading, loginWithGoogle } = useAuth();
@@ -43,9 +43,16 @@ export default function LoginPage() {
 
         {error && <div className="alert error">{error}</div>}
 
-        {!GOOGLE_CLIENT_ID ? (
-          <div className="alert error">
-            Google sign-in is not configured. Set <code>VITE_GOOGLE_CLIENT_ID</code> in the frontend environment.
+        {!IS_GOOGLE_CONFIGURED ? (
+          <div className="alert error" style={{ textAlign: 'left' }}>
+            <strong>Google sign-in is not configured yet.</strong>
+            <p style={{ margin: '8px 0 0' }}>
+              Create an OAuth 2.0 Web client ID in the Google Cloud Console with{' '}
+              <code>http://localhost:5173</code> as an authorised JavaScript origin, then set the same value in{' '}
+              <code>client/.env</code> as <code>VITE_GOOGLE_CLIENT_ID</code> and in <code>server/.env</code> as{' '}
+              <code>GOOGLE_CLIENT_ID</code>. Restart <code>npm run dev</code> afterwards — Vite only reads{' '}
+              <code>.env</code> at startup.
+            </p>
           </div>
         ) : busy ? (
           <Loader label="Signing you in…" />
