@@ -242,6 +242,10 @@ There are no schema migrations — Mongoose creates collections and indexes on f
 
 **Development** (API on :5000, SPA on :5173, both with hot reload):
 
+If port 5000 is taken on your machine, change it in one place per package —
+`PORT` and `BACKEND_URL` in `server/.env`, and `VITE_API_URL` in `client/.env`.
+The Vite dev proxy follows `VITE_API_URL` automatically.
+
 ```bash
 npm run dev
 ```
