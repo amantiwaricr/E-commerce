@@ -1,0 +1,12 @@
+export default function Logo() {
+  return (
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="14" fill="currentColor" />
+      <path
+        d="M20 40c-4-6-2-16 6-20 8-4 16 0 18 8 1 4 0 8-3 11-4 4-10 5-15 4-3-1-5-2-6-3z"
+        fill="#fff"
+      />
+      <circle cx="27" cy="30" r="4" fill="currentColor" />
+    </svg>
+  );
+}
