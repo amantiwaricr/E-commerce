@@ -297,7 +297,21 @@ cannot reach `fastdl.mongodb.org`, those suites **skip themselves with a warning
 failing the run — point them at a real database instead:
 
 ```bash
+# from the repo root (or from server/) — needs a MongoDB listening on that URI
 MONGODB_TEST_URI=mongodb://127.0.0.1:27017/fmn-test npm test
+```
+
+No MongoDB installed? Start a throwaway one:
+
+```bash
+docker run -d --name fmn-mongo -p 27017:27017 mongo:7
+```
+
+If the URI cannot be reached the run says so and skips those suites rather than hanging.
+On Windows PowerShell, set the variable first:
+
+```powershell
+$env:MONGODB_TEST_URI = "mongodb://127.0.0.1:27017/fmn-test"; npm test
 ```
 
 ---

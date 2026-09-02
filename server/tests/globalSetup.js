@@ -11,9 +11,38 @@
  * suites skip themselves instead of failing the whole run. The pure-unit suites
  * always run.
  */
+/** Fails fast instead of letting every suite hang on an unreachable database. */
+const isReachable = async (uri) => {
+  // eslint-disable-next-line global-require
+  const mongoose = require('mongoose');
+  const conn = mongoose.createConnection(uri, { serverSelectionTimeoutMS: 4000 });
+  try {
+    await conn.asPromise();
+    return true;
+  } catch (err) {
+    return false;
+  } finally {
+    await conn.close().catch(() => {});
+  }
+};
+
 module.exports = async () => {
   if (process.env.MONGODB_TEST_URI) {
-    process.env.TEST_MONGO_URI = process.env.MONGODB_TEST_URI;
+    if (await isReachable(process.env.MONGODB_TEST_URI)) {
+      process.env.TEST_MONGO_URI = process.env.MONGODB_TEST_URI;
+    } else {
+      process.env.TEST_MONGO_URI = '';
+      // eslint-disable-next-line no-console
+      console.warn(
+        [
+          '',
+          `⚠️  Could not reach MONGODB_TEST_URI (${process.env.MONGODB_TEST_URI}).`,
+          '   Database-backed suites (auth, orders, payments) will be SKIPPED.',
+          '   Start MongoDB and re-run — e.g. `docker run -d -p 27017:27017 mongo:7`.',
+          '',
+        ].join('\n')
+      );
+    }
     return;
   }
 
