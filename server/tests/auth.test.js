@@ -77,6 +77,10 @@ describeWithDb('Authentication (Google OAuth)', () => {
     expect(res.status).toBe(200);
     expect(res.body.user.role).toBe('admin');
     expect(await User.countDocuments({ email: 'sita.sharma@gmail.com' })).toBe(1);
+
+    // The seeded placeholder id is replaced by the real Google subject.
+    const claimed = await User.findOne({ email: 'sita.sharma@gmail.com' });
+    expect(claimed.googleId).toBe(GOOGLE_PROFILE.sub);
   });
 
   it('rejects a credential Google will not verify', async () => {

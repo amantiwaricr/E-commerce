@@ -192,6 +192,34 @@ describeWithDb('eSewa payment callbacks', () => {
     expect(res.status).toBe(400);
   });
 
+  it('does not release stock twice when the customer already cancelled the order', async () => {
+    const order = await placeEsewaOrder();
+    await request(app).post(`/api/orders/${order.orderNumber}/cancel`).set(authHeader(customer));
+    expect((await Product.findById(product._id)).stock).toBe(10);
+
+    await request(app)
+      .get('/api/payments/esewa/failure')
+      .query({ data: callbackData(order, { status: 'CANCELED' }) });
+
+    expect((await Product.findById(product._id)).stock).toBe(10);
+  });
+
+  it('refuses to settle a payment onto an order that was already cancelled', async () => {
+    const order = await placeEsewaOrder();
+    await request(app).post(`/api/orders/${order.orderNumber}/cancel`).set(authHeader(customer));
+    stubStatus({ status: 'COMPLETE', ref_id: 'LATE1', total_amount: order.totalAmount });
+
+    const res = await request(app)
+      .post('/api/payments/esewa/verify')
+      .send({ data: callbackData(order) });
+
+    expect(res.status).toBe(400);
+    const stored = await Order.findById(order._id);
+    expect(stored.paymentStatus).not.toBe('paid');
+    expect(stored.orderStatus).toBe('cancelled');
+    expect((await Product.findById(product._id)).stock).toBe(10);
+  });
+
   it('lists the payment methods this deployment supports', async () => {
     const res = await request(app).get('/api/payments/methods');
 

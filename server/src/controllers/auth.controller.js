@@ -57,8 +57,9 @@ const googleLogin = asyncHandler(async (req, res) => {
     });
     logger.info(`New user registered: ${email}`);
   } else {
-    // Link the Google account on a pre-seeded user and refresh the profile.
-    user.googleId = user.googleId || payload.sub;
+    // Matched by googleId or by a Google-verified email, so this subject owns the
+    // account: claim it outright, which also replaces a seeded placeholder id.
+    user.googleId = payload.sub;
     user.name = user.name || payload.name || user.name;
     if (payload.picture) user.avatar = payload.picture;
     user.lastLoginAt = new Date();

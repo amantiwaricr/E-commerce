@@ -32,6 +32,12 @@ const settleEsewaPayment = async (encodedData) => {
     return { order, alreadySettled: true };
   }
 
+  // A cancelled order must not be resurrected by a late success callback — the
+  // stock it held has already gone back to the catalogue.
+  if (order.orderStatus === 'cancelled') {
+    throw ApiError.badRequest('This order was cancelled and can no longer be paid for');
+  }
+
   // eSewa's status API — not the redirect payload — is what marks an order paid.
   const status = await esewaService.checkTransactionStatus({
     transactionUuid: decoded.transaction_uuid,
@@ -108,7 +114,7 @@ const esewaFailure = asyncHandler(async (req, res) => {
     const uuid = decoded?.transaction_uuid || query.transaction_uuid || req.body?.transaction_uuid;
     if (uuid) {
       const order = await Order.findOne({ 'payment.transactionUuid': uuid });
-      if (order && order.paymentStatus === 'unpaid') {
+      if (order && order.paymentStatus === 'unpaid' && order.orderStatus !== 'cancelled') {
         orderNumber = order.orderNumber;
         order.paymentStatus = 'failed';
         order.orderStatus = 'cancelled';
