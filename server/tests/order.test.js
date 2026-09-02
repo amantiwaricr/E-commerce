@@ -72,6 +72,12 @@ describeWithDb('Cart and order creation', () => {
     expect(res.body.order.orderNumber).toMatch(/^FMN-\d{4}-\d{5}$/);
     expect(res.body.order.trackingInfo.timeline.map((t) => t.status)).toEqual(['pending', 'confirmed']);
 
+    // Assert what was actually persisted, not just what the response echoed —
+    // a duplicated timeline entry is invisible in the in-memory document.
+    const stored = await Order.findOne({ orderNumber: res.body.order.orderNumber });
+    expect(stored.trackingInfo.timeline.map((t) => t.status)).toEqual(['pending', 'confirmed']);
+    expect(stored.orderStatus).toBe('confirmed');
+
     expect((await Product.findById(product._id)).stock).toBe(8);
     expect((await Cart.findOne({ user: customer._id })).items).toHaveLength(0);
   });
@@ -89,6 +95,9 @@ describeWithDb('Cart and order creation', () => {
     expect(res.body.payment.fields.total_amount).toBe('1300');
     expect(res.body.payment.fields.transaction_uuid).toContain(res.body.order.orderNumber);
     expect(res.body.payment.fields.signature).toBe(esewa.buildSignature(res.body.payment.fields));
+
+    const stored = await Order.findOne({ orderNumber: res.body.order.orderNumber });
+    expect(stored.trackingInfo.timeline.map((t) => t.status)).toEqual(['pending']);
   });
 
   it('gives each order a unique, sequential order number', async () => {

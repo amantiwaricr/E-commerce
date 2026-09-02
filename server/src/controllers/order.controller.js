@@ -78,6 +78,19 @@ const createOrder = asyncHandler(async (req, res) => {
   const priced = priceItems(entries);
   await reserveStock(priced.items);
 
+  const isOnline = ONLINE_METHODS.has(paymentMethod);
+  const now = new Date();
+
+  // The order is built in its final creation state and written exactly ONCE.
+  // Saving a freshly inserted document a second time re-sends the timeline
+  // array's $push, which silently duplicates the first entry in the database
+  // (the in-memory document still looks correct, so it is easy to miss).
+  const timeline = [{ status: 'pending', note: 'Order placed', at: now, by: req.user._id }];
+  if (!isOnline) {
+    // Nothing to settle online, so a COD order is confirmed the moment it lands.
+    timeline.push({ status: 'confirmed', note: 'Cash on delivery order confirmed', at: now });
+  }
+
   let order;
   try {
     order = new Order({
@@ -89,14 +102,13 @@ const createOrder = asyncHandler(async (req, res) => {
       totalAmount: priced.totalAmount,
       paymentMethod,
       paymentStatus: 'unpaid',
-      orderStatus: 'pending',
+      orderStatus: isOnline ? 'pending' : 'confirmed',
       shippingAddress,
-      trackingInfo: { estimatedDelivery: env.store.deliveryEta, timeline: [] },
-      placedAt: new Date(),
+      trackingInfo: { estimatedDelivery: env.store.deliveryEta, timeline },
+      placedAt: now,
     });
-    order.pushTimeline('pending', 'Order placed', req.user._id);
 
-    if (ONLINE_METHODS.has(paymentMethod)) {
+    if (isOnline) {
       order.payment.transactionUuid = `${order.orderNumber}-${crypto.randomBytes(4).toString('hex')}`;
       order.payment.provider = 'esewa';
     }
@@ -114,18 +126,13 @@ const createOrder = asyncHandler(async (req, res) => {
 
   const response = { success: true, order: order.toJSON() };
 
-  if (ONLINE_METHODS.has(paymentMethod)) {
+  if (isOnline) {
     response.payment = esewaService.buildPaymentPayload({
       transactionUuid: order.payment.transactionUuid,
       amount: order.itemsTotal,
       deliveryCharge: order.deliveryCharge,
     });
   } else {
-    // COD: nothing to settle online, so the order is confirmed and announced now.
-    order.orderStatus = 'confirmed';
-    order.pushTimeline('confirmed', 'Cash on delivery order confirmed');
-    await order.save();
-    response.order = order.toJSON();
     sendOrderConfirmation(order, req.user).catch((err) =>
       logger.error('Order confirmation notification failed', err.message)
     );

@@ -1,5 +1,6 @@
 'use strict';
 
+const Order = require('../models/Order');
 const { sendMail } = require('./email.service');
 const { sendWhatsApp } = require('./whatsapp.service');
 const templates = require('./templates');
@@ -39,11 +40,18 @@ const sendOrderConfirmation = async (order, user) => {
   ]);
 
   try {
-    order.notifications = order.notifications || {};
-    if (emailResult.sent) order.notifications.emailSentAt = new Date();
-    if (waResult.sent) order.notifications.whatsappSentAt = new Date();
-    order.notifications.lastError = [emailResult.error, waResult.error].filter(Boolean).join(' | ');
-    await order.save();
+    const notifications = {
+      ...(typeof order.notifications?.toObject === 'function' ? order.notifications.toObject() : order.notifications),
+    };
+    if (emailResult.sent) notifications.emailSentAt = new Date();
+    if (waResult.sent) notifications.whatsappSentAt = new Date();
+    notifications.lastError = [emailResult.error, waResult.error].filter(Boolean).join(' | ');
+
+    // A targeted update, not `order.save()`: this runs after the HTTP response,
+    // so the in-memory document may be stale and must not re-send its array
+    // deltas over whatever the order looks like by now.
+    await Order.updateOne({ _id: order._id }, { $set: { notifications } });
+    order.notifications = notifications;
   } catch (err) {
     logger.error('Could not persist notification state', err.message);
   }
