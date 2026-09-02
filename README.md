@@ -290,8 +290,9 @@ The suites cover the critical flows:
 | `tests/payment.test.js` | eSewa callbacks, status verification, amount tampering, idempotency, retries |
 | `tests/esewa.test.js` | Signature generation and callback signature verification |
 | `tests/units.test.js` | Pricing rules, phone normalisation, input sanitising, notification templates |
+| `tests/upload.test.js` | Admin image upload: storage, mimetype rejection, empty requests |
 
-`esewa.test.js` and `units.test.js` need nothing but Node. The other three need MongoDB:
+`esewa.test.js`, `units.test.js` and `upload.test.js` need nothing but Node. The other three need MongoDB:
 by default `mongodb-memory-server` downloads and starts one automatically. On a machine that
 cannot reach `fastdl.mongodb.org`, those suites **skip themselves with a warning** rather than
 failing the run — point them at a real database instead:
