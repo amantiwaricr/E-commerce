@@ -111,6 +111,19 @@ and `VITE_API_URL` must point at the API (`http://localhost:5000/api` in develop
 
 ---
 
+### Exploring without Google
+
+Setting up OAuth takes a few minutes, and until it is done there is no way to
+sign in at all. If `npm run setup` is run without a client ID it writes
+`ENABLE_DEV_LOGIN=true` to `server/.env`, and the sign-in page offers
+**"Continue without Google (development only)"**, which issues a session for the
+seeded admin so checkout, order tracking and `/admin` all work.
+
+That route is mounted only when `ENABLE_DEV_LOGIN=true` **and** `NODE_ENV` is not
+`production`; a production build never renders the button and the endpoint
+returns 404. Re-run `npm run setup` with a real client ID to switch it off and
+use Google properly.
+
 ## 4. Google sign-in setup
 
 1. Open the [Google Cloud Console](https://console.cloud.google.com/) → create or pick a project.
@@ -313,6 +326,7 @@ The suites cover the critical flows:
 | `tests/esewa.test.js` | Signature generation and callback signature verification |
 | `tests/units.test.js` | Pricing rules, phone normalisation, input sanitising, notification templates |
 | `tests/upload.test.js` | Admin image upload: storage, mimetype rejection, empty requests |
+| `tests/devlogin.test.js` | Development login: disabled by default, refused in production, roles when enabled |
 
 `esewa.test.js`, `units.test.js` and `upload.test.js` need nothing but Node. The other three need MongoDB:
 by default `mongodb-memory-server` downloads and starts one automatically. On a machine that

@@ -97,8 +97,53 @@ const updateProfile = asyncHandler(async (req, res) => {
   return res.json({ success: true, user: req.user.toPublicJSON() });
 });
 
+/**
+ * POST /api/auth/dev-login  (development only)
+ *
+ * Issues a session for a local account without going through Google, so the app
+ * can be explored before OAuth credentials exist. Mounted only when
+ * ENABLE_DEV_LOGIN=true and NODE_ENV is not production; the guard below is
+ * defence in depth in case it is ever mounted by mistake.
+ */
+const devLogin = asyncHandler(async (req, res) => {
+  if (!env.devLoginEnabled) throw ApiError.notFound('Route not found');
+
+  const adminEmail = env.seed.adminEmail.toLowerCase();
+  const email = String(req.body?.email || adminEmail).toLowerCase().trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw ApiError.badRequest('A valid email is required');
+
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = await User.create({
+      name: email.split('@')[0],
+      email,
+      // Namespaced so it can never collide with a real Google subject.
+      googleId: `dev-login:${email}`,
+      role: email === adminEmail ? 'admin' : 'customer',
+    });
+  }
+  if (user.isBlocked) throw ApiError.forbidden('This account has been blocked.');
+
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  logger.warn(`DEV LOGIN used for ${email} — ENABLE_DEV_LOGIN must never be set in production`);
+
+  const token = signToken(user);
+  setAuthCookie(res, token);
+  return res.json({ success: true, token, user: user.toPublicJSON(), devLogin: true });
+});
+
 const __setOAuthClient = (stub) => {
   client = stub;
 };
 
-module.exports = { googleLogin, getMe, logout, updateProfile, __setOAuthClient, verifyGoogleCredential };
+module.exports = {
+  googleLogin,
+  devLogin,
+  getMe,
+  logout,
+  updateProfile,
+  __setOAuthClient,
+  verifyGoogleCredential,
+};

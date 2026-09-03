@@ -13,6 +13,9 @@ const start = async () => {
   const server = app.listen(env.port, () => {
     logger.info(`${env.store.name} API listening on port ${env.port} (${env.nodeEnv})`);
     logger.info(`eSewa mode: ${env.esewa.mode}`);
+    if (env.devLoginEnabled) {
+      logger.warn('DEV LOGIN IS ENABLED — /api/auth/dev-login issues sessions without Google. Local use only.');
+    }
   });
 
   const shutdown = (signal) => () => {

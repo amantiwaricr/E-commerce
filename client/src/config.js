@@ -6,6 +6,9 @@ export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
  * `.env.example` is a placeholder, and forwarding it to Google produces an
  * opaque "Error 401: invalid_client" screen — so treat it as unconfigured.
  */
+/** Vite sets this only when running `npm run dev`, never in a production build. */
+export const IS_DEV = Boolean(import.meta.env.DEV);
+
 export const IS_GOOGLE_CONFIGURED =
   GOOGLE_CLIENT_ID.endsWith('.apps.googleusercontent.com') && !GOOGLE_CLIENT_ID.startsWith('your-');
 export const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Fresh Meat Nepal';

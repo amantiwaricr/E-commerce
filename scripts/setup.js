@@ -99,6 +99,12 @@ const main = async () => {
     // The same value on both sides: the server verifies tokens against it.
     server = setEnvValue(server, 'GOOGLE_CLIENT_ID', googleClientId);
     client = setEnvValue(client, 'VITE_GOOGLE_CLIENT_ID', googleClientId);
+    // Real sign-in is available, so the local escape hatch is not needed.
+    server = setEnvValue(server, 'ENABLE_DEV_LOGIN', 'false');
+  } else {
+    // Without OAuth there is no way in at all — enable the development login so
+    // the app is usable, and say so loudly.
+    server = setEnvValue(server, 'ENABLE_DEV_LOGIN', 'true');
   }
   if (adminEmail) {
     server = setEnvValue(server, 'SEED_ADMIN_EMAIL', adminEmail);
@@ -117,9 +123,13 @@ const main = async () => {
   if (adminEmail) console.log(`  · ${adminEmail} will be the store admin after seeding`);
   if (port) console.log(`  · API port set to ${port}`);
 
-  if (!googleClientId) {
-    console.log('\n⚠️  No Google client ID set — you can browse the shop, but not sign in,');
-    console.log('   check out, or reach /admin. Re-run `npm run setup` once you have one.');
+  if (googleClientId) {
+    console.log('  · development login disabled (real Google sign-in is configured)');
+  } else {
+    console.log('\n⚠️  No Google client ID set, so ENABLE_DEV_LOGIN=true was written to server/.env.');
+    console.log('   The sign-in page will offer "Continue without Google (development only)",');
+    console.log('   which signs you in as the seeded admin. It is refused when NODE_ENV=production.');
+    console.log('   Re-run `npm run setup` with a client ID to switch to real Google sign-in.');
   }
 
   console.log('\nNext:');

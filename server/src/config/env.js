@@ -35,6 +35,10 @@ const env = {
   googleConfigured:
     (process.env.GOOGLE_CLIENT_ID || '').endsWith('.apps.googleusercontent.com') &&
     !(process.env.GOOGLE_CLIENT_ID || '').startsWith('your-'),
+  // Local-only escape hatch: lets you use the app before Google OAuth is set up.
+  // Requires an explicit opt-in AND a non-production NODE_ENV — the route is not
+  // even mounted otherwise, so it cannot be reached on a deployed instance.
+  devLoginEnabled: !isProduction && bool(process.env.ENABLE_DEV_LOGIN, false),
   jwtSecret: process.env.JWT_SECRET || (isProduction ? '' : 'dev-only-insecure-secret'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   cookie: {

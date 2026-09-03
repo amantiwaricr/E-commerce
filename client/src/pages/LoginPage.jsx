@@ -4,10 +4,10 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Loader from '../components/Loader';
-import { IS_GOOGLE_CONFIGURED, STORE_NAME } from '../config';
+import { IS_DEV, IS_GOOGLE_CONFIGURED, STORE_NAME } from '../config';
 
 export default function LoginPage() {
-  const { isAuthenticated, loading, loginWithGoogle } = useAuth();
+  const { isAuthenticated, loading, loginWithGoogle, loginAsDev } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,6 +18,23 @@ export default function LoginPage() {
 
   if (loading) return <Loader label="Checking your session…" />;
   if (isAuthenticated) return <Navigate to={redirectTo} replace />;
+
+  const handleDevLogin = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const user = await loginAsDev();
+      toast.success(`Signed in as ${user.name} (development login)`);
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      setError(
+        err.status === 404
+          ? 'The development login is not enabled. Run `npm run setup` and restart `npm run dev`.'
+          : err.message
+      );
+      setBusy(false);
+    }
+  };
 
   const handleSuccess = async (response) => {
     setBusy(true);
@@ -68,7 +85,19 @@ export default function LoginPage() {
           </div>
         )}
 
-        <p className="small muted" style={{ marginBottom: 0 }}>
+        {IS_DEV && !IS_GOOGLE_CONFIGURED && (
+          <div style={{ borderTop: '1px solid var(--line)', marginTop: 18, paddingTop: 18 }}>
+            <button type="button" className="btn secondary block" onClick={handleDevLogin} disabled={busy}>
+              Continue without Google (development only)
+            </button>
+            <p className="small muted" style={{ marginTop: 10, marginBottom: 0 }}>
+              Signs you in as the seeded admin so you can explore the shop, checkout and admin panel.
+              This button never appears in a production build.
+            </p>
+          </div>
+        )}
+
+        <p className="small muted" style={{ marginTop: 18, marginBottom: 0 }}>
           By continuing you agree to receive order updates by email and WhatsApp.
         </p>
       </div>

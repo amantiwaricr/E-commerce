@@ -36,6 +36,14 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   }, []);
 
+  /** Development-only sign-in; the endpoint does not exist in production. */
+  const loginAsDev = useCallback(async () => {
+    const { data } = await api.post('/auth/dev-login');
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout');
@@ -59,10 +67,11 @@ export const AuthProvider = ({ children }) => {
       isAdmin: user?.role === 'admin',
       hasToken: Boolean(getToken()),
       loginWithGoogle,
+      loginAsDev,
       logout,
       updateProfile,
     }),
-    [user, loading, loginWithGoogle, logout, updateProfile]
+    [user, loading, loginWithGoogle, loginAsDev, logout, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
