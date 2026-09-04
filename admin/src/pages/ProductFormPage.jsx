@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../../api/client';
-import Loader from '../../components/Loader';
-import { useToast } from '../../context/ToastContext';
-import { CATEGORIES } from '../../config';
-
-const UNITS = ['kg', 'g', 'piece', 'pack'];
+import api from '../api/client';
+import Loader from '../components/Loader';
+import { useToast } from '../context/ToastContext';
+import { CATEGORIES, UNITS } from '../config';
 
 const BLANK = {
   name: '',
@@ -19,7 +17,7 @@ const BLANK = {
   isAvailable: true,
 };
 
-export default function AdminProductFormPage() {
+export default function ProductFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -109,7 +107,7 @@ export default function AdminProductFormPage() {
       else await api.post('/admin/products', payload);
 
       toast.success(isEdit ? 'Product updated.' : 'Product created.');
-      navigate('/admin/products');
+      navigate('/products');
     } catch (err) {
       setError(err.message);
       setFieldErrors(Object.fromEntries((err.fieldErrors || []).map((e) => [e.field, e.message])));
@@ -235,7 +233,7 @@ export default function AdminProductFormPage() {
           <button className="btn" type="submit" disabled={saving}>
             {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create product'}
           </button>
-          <button type="button" className="btn secondary" onClick={() => navigate('/admin/products')}>
+          <button type="button" className="btn secondary" onClick={() => navigate('/products')}>
             Cancel
           </button>
         </div>

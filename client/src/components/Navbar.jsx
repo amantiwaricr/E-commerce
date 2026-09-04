@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { STORE_NAME } from '../config';
 
 export default function Navbar() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -45,12 +45,6 @@ export default function Navbar() {
           {isAuthenticated && (
             <NavLink to="/orders" onClick={close}>
               My orders
-            </NavLink>
-          )}
-
-          {isAdmin && (
-            <NavLink to="/admin" onClick={close}>
-              Admin
             </NavLink>
           )}
 

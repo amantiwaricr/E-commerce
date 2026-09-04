@@ -13,6 +13,8 @@ process.env.ESEWA_CARD_ENABLED = 'true';
 process.env.DELIVERY_CHARGE = '100';
 process.env.FREE_DELIVERY_THRESHOLD = '3000';
 process.env.WHATSAPP_PROVIDER = 'none';
+// Off unless a suite opts in — see tests/devlogin.test.js.
+process.env.ENABLE_DEV_LOGIN = 'false';
 process.env.SMTP_HOST = '';
 
 jest.setTimeout(60000);

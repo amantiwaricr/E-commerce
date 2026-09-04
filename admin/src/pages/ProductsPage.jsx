@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../api/client';
-import Loader from '../../components/Loader';
-import Pagination from '../../components/Pagination';
-import EmptyState from '../../components/EmptyState';
-import { useToast } from '../../context/ToastContext';
-import { formatNpr } from '../../utils/format';
-import { CATEGORIES } from '../../config';
+import api from '../api/client';
+import Loader from '../components/Loader';
+import Pagination from '../components/Pagination';
+import EmptyState from '../components/EmptyState';
+import { useToast } from '../context/ToastContext';
+import { formatNpr } from '../utils/format';
+import { CATEGORIES } from '../config';
 
-export default function AdminProductsPage() {
+export default function ProductsPage() {
   const toast = useToast();
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1 });
@@ -60,7 +60,7 @@ export default function AdminProductsPage() {
     <>
       <div className="page-head">
         <h1>Products</h1>
-        <Link className="btn" to="/admin/products/new">
+        <Link className="btn" to="/products/new">
           Add product
         </Link>
       </div>
@@ -159,7 +159,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td>
                       <div className="row" style={{ flexWrap: 'nowrap' }}>
-                        <Link className="btn secondary sm" to={`/admin/products/${product._id}`}>
+                        <Link className="btn secondary sm" to={`/products/${product._id}`}>
                           Edit
                         </Link>
                         <button type="button" className="btn secondary sm" onClick={() => toggleAvailability(product)}>

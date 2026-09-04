@@ -19,6 +19,7 @@ const readline = require('readline');
 const ROOT = path.resolve(__dirname, '..');
 const SERVER_ENV = path.join(ROOT, 'server', '.env');
 const CLIENT_ENV = path.join(ROOT, 'client', '.env');
+const ADMIN_ENV = path.join(ROOT, 'admin', '.env');
 
 const GOOGLE_ID_SUFFIX = '.apps.googleusercontent.com';
 
@@ -61,9 +62,11 @@ const ask = (rl, question, { validate, allowBlank = true } = {}) =>
 const main = async () => {
   console.log('\nFresh Meat Nepal — setup\n');
 
-  const created = [ensureEnvFile(SERVER_ENV) && 'server/.env', ensureEnvFile(CLIENT_ENV) && 'client/.env'].filter(
-    Boolean
-  );
+  const created = [
+    ensureEnvFile(SERVER_ENV) && 'server/.env',
+    ensureEnvFile(CLIENT_ENV) && 'client/.env',
+    ensureEnvFile(ADMIN_ENV) && 'admin/.env',
+  ].filter(Boolean);
   created.forEach((file) => console.log(`✓ created ${file} from its example`));
 
   let googleClientId = arg('google-client-id');
@@ -78,7 +81,8 @@ const main = async () => {
     console.log('\nPress Enter to skip any question and leave that value unchanged.\n');
     console.log('Google OAuth client ID — create one at https://console.cloud.google.com');
     console.log('  Credentials → OAuth client ID → Web application');
-    console.log('  Authorised JavaScript origin: http://localhost:5173\n');
+    console.log('  Authorised JavaScript origins: http://localhost:5173  AND  http://localhost:5174');
+    console.log('  (the storefront and the admin panel are separate apps)\n');
 
     googleClientId = await ask(rl, 'Google client ID: ', { validate: isValidGoogleId });
     adminEmail = await ask(rl, 'Your Gmail address (becomes the store admin): ');
@@ -94,11 +98,13 @@ const main = async () => {
 
   let server = fs.readFileSync(SERVER_ENV, 'utf8');
   let client = fs.readFileSync(CLIENT_ENV, 'utf8');
+  let admin = fs.readFileSync(ADMIN_ENV, 'utf8');
 
   if (googleClientId) {
     // The same value on both sides: the server verifies tokens against it.
     server = setEnvValue(server, 'GOOGLE_CLIENT_ID', googleClientId);
     client = setEnvValue(client, 'VITE_GOOGLE_CLIENT_ID', googleClientId);
+    admin = setEnvValue(admin, 'VITE_GOOGLE_CLIENT_ID', googleClientId);
     // Real sign-in is available, so the local escape hatch is not needed.
     server = setEnvValue(server, 'ENABLE_DEV_LOGIN', 'false');
   } else {
@@ -113,13 +119,15 @@ const main = async () => {
     server = setEnvValue(server, 'PORT', port);
     server = setEnvValue(server, 'BACKEND_URL', `http://localhost:${port}`);
     client = setEnvValue(client, 'VITE_API_URL', `http://localhost:${port}/api`);
+    admin = setEnvValue(admin, 'VITE_API_URL', `http://localhost:${port}/api`);
   }
 
   fs.writeFileSync(SERVER_ENV, server);
   fs.writeFileSync(CLIENT_ENV, client);
+  fs.writeFileSync(ADMIN_ENV, admin);
 
-  console.log('\n✓ server/.env and client/.env updated');
-  if (googleClientId) console.log('  · Google client ID written to both files');
+  console.log('\n✓ server/.env, client/.env and admin/.env updated');
+  if (googleClientId) console.log('  · Google client ID written to all three files');
   if (adminEmail) console.log(`  · ${adminEmail} will be the store admin after seeding`);
   if (port) console.log(`  · API port set to ${port}`);
 
@@ -135,7 +143,8 @@ const main = async () => {
   console.log('\nNext:');
   console.log('  npm run seed');
   console.log('  npm run dev');
-  console.log('  → http://localhost:5173\n');
+  console.log('  → storefront    http://localhost:5173');
+  console.log('  → admin panel   http://localhost:5174\n');
 };
 
 main().catch((err) => {

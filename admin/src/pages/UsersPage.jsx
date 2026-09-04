@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '../../api/client';
-import Loader from '../../components/Loader';
-import Pagination from '../../components/Pagination';
-import EmptyState from '../../components/EmptyState';
-import { useToast } from '../../context/ToastContext';
-import { formatDay } from '../../utils/format';
+import api from '../api/client';
+import Loader from '../components/Loader';
+import Pagination from '../components/Pagination';
+import EmptyState from '../components/EmptyState';
+import { useToast } from '../context/ToastContext';
+import { formatDay } from '../utils/format';
 
-export default function AdminUsersPage() {
+export default function UsersPage() {
   const toast = useToast();
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1 });

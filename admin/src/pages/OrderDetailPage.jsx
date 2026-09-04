@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import api from '../../api/client';
-import Loader from '../../components/Loader';
-import EmptyState from '../../components/EmptyState';
-import StatusBadge from '../../components/StatusBadge';
-import OrderTimeline from '../../components/OrderTimeline';
-import { useToast } from '../../context/ToastContext';
-import { formatDate, formatNpr } from '../../utils/format';
-import { PAYMENT_METHOD_LABELS } from '../../config';
+import api from '../api/client';
+import Loader from '../components/Loader';
+import EmptyState from '../components/EmptyState';
+import StatusBadge from '../components/StatusBadge';
+import OrderTimeline from '../components/OrderTimeline';
+import { useToast } from '../context/ToastContext';
+import { formatDate, formatNpr } from '../utils/format';
+import { NEXT_STATUSES, PAYMENT_METHOD_LABELS } from '../config';
 
-/** Mirrors the server-side transition table so the UI only offers legal moves. */
-const NEXT_STATUSES = {
-  pending: ['confirmed', 'cancelled'],
-  confirmed: ['processing', 'cancelled'],
-  processing: ['shipped', 'cancelled'],
-  shipped: ['delivered', 'cancelled'],
-  delivered: [],
-  cancelled: [],
-};
 
-export default function AdminOrderDetailPage() {
+export default function OrderDetailPage() {
   const { orderNumber } = useParams();
   const toast = useToast();
 
@@ -83,7 +74,7 @@ export default function AdminOrderDetailPage() {
 
   if (loading) return <Loader />;
   if (error || !order) {
-    return <EmptyState title="Order not found" message={error} actionLabel="Back to orders" actionTo="/admin/orders" />;
+    return <EmptyState title="Order not found" message={error} actionLabel="Back to orders" actionTo="/orders" />;
   }
 
   const nextStatuses = NEXT_STATUSES[order.orderStatus] || [];
@@ -91,7 +82,7 @@ export default function AdminOrderDetailPage() {
   return (
     <>
       <p className="small muted">
-        <Link to="/admin/orders">← All orders</Link>
+        <Link to="/orders">← All orders</Link>
       </p>
 
       <div className="page-head">

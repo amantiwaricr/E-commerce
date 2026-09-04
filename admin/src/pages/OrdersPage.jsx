@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../../api/client';
-import Loader from '../../components/Loader';
-import Pagination from '../../components/Pagination';
-import EmptyState from '../../components/EmptyState';
-import StatusBadge from '../../components/StatusBadge';
-import { formatDate, formatNpr } from '../../utils/format';
-import { PAYMENT_METHOD_LABELS } from '../../config';
+import api from '../api/client';
+import Loader from '../components/Loader';
+import Pagination from '../components/Pagination';
+import EmptyState from '../components/EmptyState';
+import StatusBadge from '../components/StatusBadge';
+import { formatDate, formatNpr } from '../utils/format';
+import { ORDER_STATUSES, PAYMENT_METHOD_LABELS } from '../config';
 
-const ORDER_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-
-export default function AdminOrdersPage() {
+export default function OrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1 });
@@ -170,7 +168,7 @@ export default function AdminOrdersPage() {
                       <StatusBadge status={order.orderStatus} />
                     </td>
                     <td>
-                      <Link className="btn secondary sm" to={`/admin/orders/${order.orderNumber}`}>
+                      <Link className="btn secondary sm" to={`/orders/${order.orderNumber}`}>
                         Manage
                       </Link>
                     </td>

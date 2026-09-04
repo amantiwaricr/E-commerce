@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../api/client';
-import Loader from '../../components/Loader';
-import { formatNpr, titleCase } from '../../utils/format';
+import api from '../api/client';
+import Loader from '../components/Loader';
+import { formatNpr, titleCase } from '../utils/format';
 
-export default function AdminDashboardPage() {
+export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
 
@@ -22,14 +22,18 @@ export default function AdminDashboardPage() {
     <>
       <div className="page-head">
         <h1>Dashboard</h1>
+        <div className="row">
+          <Link className="btn" to="/products/new">Add product</Link>
+          <Link className="btn secondary" to="/orders?status=pending">Pending orders</Link>
+        </div>
       </div>
 
       <div className="stat-grid">
-        <div className="stat">
+        <div className="stat accent">
           <div className="label">Today’s orders</div>
           <div className="value">{stats.todayOrders}</div>
         </div>
-        <div className="stat">
+        <div className="stat accent">
           <div className="label">Today’s revenue</div>
           <div className="value">{formatNpr(stats.todayRevenue)}</div>
         </div>
@@ -55,27 +59,17 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <section className="panel" style={{ marginTop: 22 }}>
+      <section className="panel" style={{ marginTop: 20 }}>
         <h3>Orders by status</h3>
         <div className="chip-row">
           {Object.entries(stats.ordersByStatus || {}).map(([status, count]) => (
-            <Link key={status} className="chip" to={`/admin/orders?status=${status}`}>
+            <Link key={status} className="chip" to={`/orders?status=${status}`}>
               {titleCase(status)}: <strong>{count}</strong>
             </Link>
           ))}
-          {Object.keys(stats.ordersByStatus || {}).length === 0 && <span className="muted small">No orders yet.</span>}
-        </div>
-      </section>
-
-      <section className="panel" style={{ marginTop: 18 }}>
-        <h3>Quick actions</h3>
-        <div className="row">
-          <Link className="btn" to="/admin/products/new">
-            Add a product
-          </Link>
-          <Link className="btn secondary" to="/admin/orders?status=pending">
-            Review pending orders
-          </Link>
+          {Object.keys(stats.ordersByStatus || {}).length === 0 && (
+            <span className="muted small">No orders yet.</span>
+          )}
         </div>
       </section>
     </>

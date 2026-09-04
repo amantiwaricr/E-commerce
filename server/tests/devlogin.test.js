@@ -29,7 +29,7 @@ const appWith = (vars) => {
 };
 
 describe('Development login is off unless explicitly enabled', () => {
-  it('is not mounted by default', async () => {
+  it('is not mounted when the flag is absent', async () => {
     const res = await request(appWith({ ENABLE_DEV_LOGIN: undefined })).post('/api/auth/dev-login').send({});
     expect(res.status).toBe(404);
   });

@@ -28,7 +28,15 @@ const createApp = () => {
     })
   );
 
-  const allowedOrigins = new Set([env.frontendUrl, 'http://localhost:5173', 'http://127.0.0.1:5173']);
+  // The storefront and the admin panel are separate apps on separate origins.
+  const allowedOrigins = new Set([
+    env.frontendUrl,
+    env.adminUrl,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+  ]);
   app.use(
     cors({
       origin: (origin, callback) => {

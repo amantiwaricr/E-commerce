@@ -17,14 +17,6 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminProductsPage from './pages/admin/AdminProductsPage';
-import AdminProductFormPage from './pages/admin/AdminProductFormPage';
-import AdminOrdersPage from './pages/admin/AdminOrdersPage';
-import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-
 export default function App() {
   return (
     <div className="app-shell">
@@ -46,19 +38,6 @@ export default function App() {
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/:orderNumber" element={<OrderDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-          </Route>
-
-          {/* Admins */}
-          <Route element={<ProtectedRoute adminOnly />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="products" element={<AdminProductsPage />} />
-              <Route path="products/new" element={<AdminProductFormPage />} />
-              <Route path="products/:id" element={<AdminProductFormPage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="orders/:orderNumber" element={<AdminOrderDetailPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-            </Route>
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

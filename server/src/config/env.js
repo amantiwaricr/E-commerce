@@ -3,7 +3,11 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Tests configure themselves in tests/setup.js and must stay hermetic: reading a
+// developer's local .env here would make results depend on their machine.
+if (process.env.NODE_ENV !== 'test') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 const bool = (value, fallback = false) => {
   if (value === undefined || value === null || value === '') return fallback;
@@ -26,6 +30,8 @@ const env = {
   port: num(process.env.PORT, 5000),
   frontendUrl: (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, ''),
   backendUrl: (process.env.BACKEND_URL || 'http://localhost:5000').replace(/\/$/, ''),
+  // The admin panel is a separate app served from its own origin.
+  adminUrl: (process.env.ADMIN_URL || 'http://localhost:5174').replace(/\/$/, ''),
 
   mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fresh-meat-nepal',
 
