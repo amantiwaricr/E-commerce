@@ -5,6 +5,7 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { FavouritesProvider } from './context/FavouritesContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 import './home.css';
@@ -12,6 +13,7 @@ import './home.css';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
+      <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
             <FavouritesProvider>
@@ -21,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             </FavouritesProvider>
           </AuthProvider>
         </ToastProvider>
-      </BrowserRouter>
+      </ThemeProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

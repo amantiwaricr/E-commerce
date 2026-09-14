@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from './Logo';
 import { BoxIcon, CartIcon, HeartIcon, SearchIcon } from './icons';
 import AccountMenu from './AccountMenu';
+import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
@@ -60,6 +61,8 @@ export default function TopBar() {
           {itemCount > 0 && <span className="count-badge">{itemCount}</span>}
           <span className="label">Cart</span>
         </NavLink>
+
+        <ThemeToggle />
 
         {isAuthenticated ? (
           <AccountMenu />

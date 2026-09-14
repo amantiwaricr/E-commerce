@@ -394,6 +394,25 @@ COOKIE_SECURE=true
 Because the SPA uses client-side routing, configure your static host to rewrite unknown paths
 to `index.html`.
 
+### Light and dark
+
+The storefront ships two themes off one set of tokens. **Light is the default**
+— white and green; the moon button in the top bar (and in the landing-page nav)
+switches to the original black-and-lime look, and the sun switches back.
+
+The choice is stored per browser under `fmn_theme` and re-applied by a small
+inline script in `index.html` before the first paint, so a reader who picked
+dark never sees a flash of white. Nothing about it reaches the server.
+
+Both palettes live at the top of `client/src/index.css`: `:root` holds light,
+`[data-theme='dark']` holds dark, and `home.css` reads the same tokens through
+the aliases underneath. No rule below that block names a colour directly, so
+adding a third theme is a matter of one more token set.
+
+Two elements stay dark in both themes on purpose — the feature tile in the
+catalogue and the call-to-action band on the landing page. Both carry white
+type over a photograph or a brand slab, and both say so in a comment.
+
 ### The admin console
 
 `http://localhost:5174` — a separate app with its own session, so a customer

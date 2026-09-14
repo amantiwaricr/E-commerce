@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0c0f0a" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
       content="Fresh Meat Nepal — farm-fresh and processed meat delivered across Kathmandu Valley. Pay with eSewa, card, or cash on delivery."
@@ -18,6 +18,19 @@
     <title>Fresh Meat Nepal — Fresh meat delivered across Kathmandu</title>
   </head>
   <body>
+    <script>
+      // Applies the stored theme before the first paint, so a reader who chose
+      // dark mode never gets a flash of the light palette. Light is the
+      // default; the same rule lives in ThemeContext.jsx.
+      (function () {
+        try {
+          var stored = localStorage.getItem('fmn_theme');
+          document.documentElement.dataset.theme = stored === 'dark' ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

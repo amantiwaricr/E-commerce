@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Emblem from '../components/Emblem';
+import ThemeToggle from '../components/ThemeToggle';
 import {
   ArrowRight, BoxIcon, CartIcon, ClockIcon, FarmIcon, GridIcon, LeafIcon,
   MailIcon, PhoneIcon, PinIcon, RouteIcon, SearchIcon, ShieldIcon, SnowIcon,
@@ -114,7 +115,7 @@ export default function HomePage() {
           <Link to="/" className="active">Home</Link>
           <a href="#how">About</a>
           <Link to="/shop">Meat Market</Link>
-          <a href="#contact">Contact</a>
+          <a href="#visit">Contact</a>
           <button type="button" className="nav-search" aria-label="Search the shop" onClick={() => navigate('/shop')}>
             <SearchIcon width={16} height={16} />
           </button>
@@ -129,6 +130,8 @@ export default function HomePage() {
         >
           ☰
         </button>
+
+        <ThemeToggle className="on-dark" />
 
         <Link to={isAuthenticated ? '/orders' : '/login'} className="home-login">
           {isAuthenticated ? user.name.split(' ')[0] : 'Log In'}
