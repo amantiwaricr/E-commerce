@@ -17,7 +17,7 @@ const getOrCreateCart = async (userId) => {
  * Re-prices a cart against current products and drops lines whose product was
  * deleted or unpublished, so the cart a customer sees is always purchasable.
  */
-const buildCartResponse = async (cart) => {
+const buildCartResponse = async (cart, deliveryMethod = 'standard') => {
   await cart.populate('items.product');
 
   const validEntries = [];
@@ -41,7 +41,7 @@ const buildCartResponse = async (cart) => {
     await cart.save();
   }
 
-  const priced = priceItems(validEntries);
+  const priced = priceItems(validEntries, deliveryMethod);
   return {
     items: priced.items.map((item, index) => ({
       ...item,
@@ -58,7 +58,8 @@ const buildCartResponse = async (cart) => {
 /** GET /api/cart */
 const getCart = asyncHandler(async (req, res) => {
   const cart = await getOrCreateCart(req.user._id);
-  return res.json({ success: true, cart: await buildCartResponse(cart) });
+  const query = req.safeQuery || req.query;
+  return res.json({ success: true, cart: await buildCartResponse(cart, query.deliveryMethod) });
 });
 
 /** POST /api/cart/items — adds to (or increments) a cart line. */

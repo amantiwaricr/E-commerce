@@ -41,6 +41,17 @@ describe('cart pricing', () => {
     expect(deliveryChargeFor(0)).toBe(0);
   });
 
+  it('never charges delivery when the customer collects in store', () => {
+    expect(deliveryChargeFor(620, 'pickup')).toBe(0);
+    expect(deliveryChargeFor(620, 'standard')).toBe(100);
+  });
+
+  it('prices a pick-up basket without a delivery charge', () => {
+    const { deliveryCharge, totalAmount } = priceItems([{ product: product({ price: 620 }), quantity: 1 }], 'pickup');
+    expect(deliveryCharge).toBe(0);
+    expect(totalAmount).toBe(620);
+  });
+
   it('rounds money to two decimals', () => {
     expect(round2(0.1 + 0.2)).toBe(0.3);
     expect(formatNpr(1250)).toBe('Rs. 1,250.00');

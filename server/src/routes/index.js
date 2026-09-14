@@ -12,6 +12,7 @@ router.get('/health', (req, res) =>
 router.use('/auth', require('./auth.routes'));
 router.use('/products', require('./product.routes'));
 router.use('/cart', require('./cart.routes'));
+router.use('/favourites', require('./favourite.routes'));
 router.use('/orders', require('./order.routes'));
 router.use('/payments', require('./payment.routes'));
 router.use('/admin', require('./admin.routes'));

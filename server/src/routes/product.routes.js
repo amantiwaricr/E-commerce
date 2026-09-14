@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.get('/', validate(validators.listProducts), controller.listProducts);
 router.get('/categories', controller.listCategories);
+router.get('/facets', controller.getFacets);
 router.get('/:slug', controller.getProductBySlug);
 
 module.exports = router;

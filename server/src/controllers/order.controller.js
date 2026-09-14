@@ -54,7 +54,7 @@ const releaseStock = async (items) => {
  * browser posts to eSewa.
  */
 const createOrder = asyncHandler(async (req, res) => {
-  const { paymentMethod, shippingAddress } = req.body;
+  const { paymentMethod, shippingAddress, deliveryMethod = 'standard' } = req.body;
 
   if (paymentMethod === 'card' && !env.esewa.cardEnabled) {
     throw ApiError.badRequest('Card payments are not enabled for this store yet. Please choose eSewa or COD.');
@@ -75,7 +75,7 @@ const createOrder = asyncHandler(async (req, res) => {
     entries.push({ product, quantity: line.quantity });
   }
 
-  const priced = priceItems(entries);
+  const priced = priceItems(entries, deliveryMethod);
   await reserveStock(priced.items);
 
   const isOnline = ONLINE_METHODS.has(paymentMethod);
@@ -101,10 +101,14 @@ const createOrder = asyncHandler(async (req, res) => {
       deliveryCharge: priced.deliveryCharge,
       totalAmount: priced.totalAmount,
       paymentMethod,
+      deliveryMethod,
       paymentStatus: 'unpaid',
       orderStatus: isOnline ? 'pending' : 'confirmed',
       shippingAddress,
-      trackingInfo: { estimatedDelivery: env.store.deliveryEta, timeline },
+      trackingInfo: {
+        estimatedDelivery: deliveryMethod === 'pickup' ? 'Ready for pick-up in 2 hours' : env.store.deliveryEta,
+        timeline,
+      },
       placedAt: now,
     });
 

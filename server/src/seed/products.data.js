@@ -11,6 +11,8 @@ module.exports = [
     unit: 'kg',
     stock: 40,
     tags: ['chicken', 'boneless', 'lean'],
+    rating: 4.7,
+    reviewCount: 214,
     images: ['https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800&q=80'],
   },
   {
@@ -22,6 +24,8 @@ module.exports = [
     unit: 'kg',
     stock: 22,
     tags: ['chicken', 'local', 'free-range'],
+    rating: 4.8,
+    reviewCount: 96,
     images: ['https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=800&q=80'],
   },
   {
@@ -33,6 +37,9 @@ module.exports = [
     unit: 'kg',
     stock: 18,
     tags: ['mutton', 'khasi', 'curry cut'],
+    rating: 4.9,
+    reviewCount: 341,
+    isFeatured: true,
     images: ['https://images.unsplash.com/photo-1603048297172-c92544798d5a?w=800&q=80'],
   },
   {
@@ -43,6 +50,8 @@ module.exports = [
     unit: 'kg',
     stock: 35,
     tags: ['buff', 'buffalo', 'boneless'],
+    rating: 4.5,
+    reviewCount: 178,
     images: ['https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=800&q=80'],
   },
   {
@@ -53,6 +62,8 @@ module.exports = [
     unit: 'kg',
     stock: 16,
     tags: ['pork', 'belly'],
+    rating: 4.4,
+    reviewCount: 63,
     images: ['https://images.unsplash.com/photo-1602470521006-aeff0d956b5c?w=800&q=80'],
   },
   {
@@ -63,6 +74,8 @@ module.exports = [
     unit: 'pack',
     stock: 50,
     tags: ['sausage', 'chicken', 'ready to cook'],
+    rating: 4.3,
+    reviewCount: 152,
     images: ['https://images.unsplash.com/photo-1597645587822-e99fa5d45d25?w=800&q=80'],
   },
   {
@@ -73,6 +86,8 @@ module.exports = [
     unit: 'pack',
     stock: 30,
     tags: ['salami', 'smoked', 'buff'],
+    rating: 4.6,
+    reviewCount: 88,
     images: ['https://images.unsplash.com/photo-1588347818133-2b1a1b0b4b6e?w=800&q=80'],
   },
   {
@@ -83,6 +98,8 @@ module.exports = [
     unit: 'pack',
     stock: 45,
     tags: ['keema', 'momo', 'minced'],
+    rating: 4.8,
+    reviewCount: 267,
     images: ['https://images.unsplash.com/photo-1626074353765-517a681e40be?w=800&q=80'],
   },
   {
@@ -93,6 +110,8 @@ module.exports = [
     unit: 'kg',
     stock: 25,
     tags: ['tandoori', 'marinated', 'ready to cook'],
+    rating: 4.9,
+    reviewCount: 190,
     images: ['https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=800&q=80'],
   },
   {
@@ -103,6 +122,8 @@ module.exports = [
     unit: 'pack',
     stock: 20,
     tags: ['sekuwa', 'mutton', 'marinated'],
+    rating: 4.7,
+    reviewCount: 121,
     images: ['https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80'],
   },
   {
@@ -113,6 +134,8 @@ module.exports = [
     unit: 'pack',
     stock: 14,
     tags: ['liver', 'offal', 'kalejo'],
+    rating: 4.2,
+    reviewCount: 44,
     images: ['https://images.unsplash.com/photo-1608500218890-c4914d0d4f8b?w=800&q=80'],
   },
   {
@@ -123,6 +146,8 @@ module.exports = [
     unit: 'kg',
     stock: 12,
     tags: ['fish', 'trout', 'seafood'],
+    rating: 4.6,
+    reviewCount: 77,
     images: ['https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80'],
   },
 ];

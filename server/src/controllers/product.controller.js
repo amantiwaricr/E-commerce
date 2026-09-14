@@ -9,7 +9,18 @@ const SORT_OPTIONS = {
   'price-asc': { price: 1 },
   'price-desc': { price: -1 },
   name: { name: 1 },
+  rating: { rating: -1 },
 };
+
+const HISTOGRAM_BUCKETS = 28;
+
+/** Splits a comma-separated query value into a clean list. */
+const toList = (value) =>
+  String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 25);
 
 /** Builds a Mongo filter from validated query params. */
 const buildFilter = (query, { adminView = false } = {}) => {
@@ -17,6 +28,12 @@ const buildFilter = (query, { adminView = false } = {}) => {
 
   if (query.category) filter.category = query.category;
   if (query.search) filter.$text = { $search: String(query.search) };
+
+  const tags = toList(query.tags);
+  if (tags.length) filter.tags = { $in: tags };
+
+  const minRating = Number(query.minRating);
+  if (Number.isFinite(minRating) && minRating > 0) filter.rating = { $gte: minRating };
 
   const min = Number(query.minPrice);
   const max = Number(query.maxPrice);
@@ -55,6 +72,73 @@ const listProducts = asyncHandler(async (req, res) => {
     success: true,
     products: items,
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+  });
+});
+
+/**
+ * GET /api/products/facets
+ * Everything the storefront sidebar needs in one round trip: the catalogue's
+ * price bounds and distribution, the tag list with counts, category counts and
+ * how many products sit at each star threshold.
+ */
+const getFacets = asyncHandler(async (req, res) => {
+  const published = { isAvailable: true };
+
+  const [bounds, categories, tags, ratings] = await Promise.all([
+    Product.aggregate([
+      { $match: published },
+      { $group: { _id: null, min: { $min: '$price' }, max: { $max: '$price' }, avg: { $avg: '$price' } } },
+    ]),
+    Product.aggregate([{ $match: published }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
+    Product.aggregate([
+      { $match: published },
+      { $unwind: '$tags' },
+      { $group: { _id: '$tags', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: 24 },
+    ]),
+    Product.aggregate([
+      { $match: { ...published, rating: { $gt: 0 } } },
+      { $group: { _id: { $floor: '$rating' }, count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const min = Math.floor(bounds[0]?.min ?? 0);
+  const max = Math.ceil(bounds[0]?.max ?? 0);
+
+  // A fixed-width histogram of the price distribution, drawn under the slider.
+  let histogram = [];
+  if (max > min) {
+    const width = (max - min) / HISTOGRAM_BUCKETS;
+    const rows = await Product.aggregate([
+      { $match: published },
+      {
+        $bucket: {
+          groupBy: '$price',
+          boundaries: Array.from({ length: HISTOGRAM_BUCKETS + 1 }, (_, i) => min + i * width),
+          default: 'overflow',
+          output: { count: { $sum: 1 } },
+        },
+      },
+    ]);
+    const counts = new Map(rows.filter((r) => r._id !== 'overflow').map((r) => [Math.round(r._id), r.count]));
+    histogram = Array.from({ length: HISTOGRAM_BUCKETS }, (_, i) => counts.get(Math.round(min + i * width)) || 0);
+  }
+
+  return res.json({
+    success: true,
+    facets: {
+      price: { min, max, average: Math.round(bounds[0]?.avg ?? 0), histogram },
+      categories: Product.PRODUCT_CATEGORIES.map((name) => ({
+        name,
+        count: categories.find((c) => c._id === name)?.count || 0,
+      })),
+      tags: tags.map((t) => ({ name: t._id, count: t.count })),
+      ratings: [4, 3, 2, 1].map((stars) => ({
+        stars,
+        count: ratings.filter((r) => r._id >= stars).reduce((sum, r) => sum + r.count, 0),
+      })),
+    },
   });
 });
 
@@ -113,7 +197,8 @@ const adminGetProduct = asyncHandler(async (req, res) => {
 
 /** POST /api/admin/products */
 const createProduct = asyncHandler(async (req, res) => {
-  const { name, description, category, price, stock, images, isAvailable, unit, tags } = req.body;
+  const { name, description, category, price, stock, images, isAvailable, unit, tags, rating, reviewCount, isFeatured } =
+    req.body;
   const product = await Product.create({
     name,
     description,
@@ -124,6 +209,9 @@ const createProduct = asyncHandler(async (req, res) => {
     images: Array.isArray(images) ? images : [],
     tags: Array.isArray(tags) ? tags : [],
     isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
+    isFeatured: Boolean(isFeatured),
+    rating: rating || 0,
+    reviewCount: reviewCount || 0,
   });
   return res.status(201).json({ success: true, product: product.toJSON() });
 });
@@ -133,7 +221,10 @@ const updateProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) throw ApiError.notFound('Product not found');
 
-  const updatable = ['name', 'description', 'category', 'price', 'stock', 'unit', 'images', 'isAvailable', 'tags'];
+  const updatable = [
+    'name', 'description', 'category', 'price', 'stock', 'unit',
+    'images', 'isAvailable', 'tags', 'rating', 'reviewCount', 'isFeatured',
+  ];
   for (const field of updatable) {
     if (req.body[field] !== undefined) product[field] = req.body[field];
   }
@@ -160,6 +251,7 @@ const toggleAvailability = asyncHandler(async (req, res) => {
 
 module.exports = {
   listProducts,
+  getFacets,
   listCategories,
   getProductBySlug,
   adminListProducts,

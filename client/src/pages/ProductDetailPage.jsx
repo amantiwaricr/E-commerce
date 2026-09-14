@@ -33,7 +33,7 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="container page">
-        <EmptyState title="Product not found" message={error} actionLabel="Back to catalogue" actionTo="/products" />
+        <EmptyState title="Product not found" message={error} actionLabel="Back to catalogue" actionTo="/" />
       </div>
     );
   }
@@ -43,7 +43,7 @@ export default function ProductDetailPage() {
   return (
     <div className="container page">
       <p className="small muted">
-        <Link to="/products">← Back to catalogue</Link>
+        <Link to="/">← Back to catalogue</Link>
       </p>
 
       <div className="checkout-grid">

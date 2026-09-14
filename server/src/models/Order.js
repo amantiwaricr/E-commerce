@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const ORDER_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 const PAYMENT_STATUSES = ['unpaid', 'paid', 'failed', 'refunded'];
 const PAYMENT_METHODS = ['esewa', 'cod', 'card'];
+const DELIVERY_METHODS = ['standard', 'pickup'];
 
 /** Statuses an order may legally move to, keyed by its current status. */
 const ORDER_STATUS_TRANSITIONS = {
@@ -80,6 +81,8 @@ const orderSchema = new mongoose.Schema(
     deliveryCharge: { type: Number, required: true, min: 0, default: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
     paymentMethod: { type: String, enum: PAYMENT_METHODS, required: true },
+    // Pick-up orders are collected in store and carry no delivery charge.
+    deliveryMethod: { type: String, enum: DELIVERY_METHODS, default: 'standard' },
     paymentStatus: { type: String, enum: PAYMENT_STATUSES, default: 'unpaid', index: true },
     payment: { type: paymentSchema, default: () => ({}) },
     orderStatus: { type: String, enum: ORDER_STATUSES, default: 'pending', index: true },
@@ -118,4 +121,5 @@ module.exports = mongoose.models.Order || mongoose.model('Order', orderSchema);
 module.exports.ORDER_STATUSES = ORDER_STATUSES;
 module.exports.PAYMENT_STATUSES = PAYMENT_STATUSES;
 module.exports.PAYMENT_METHODS = PAYMENT_METHODS;
+module.exports.DELIVERY_METHODS = DELIVERY_METHODS;
 module.exports.ORDER_STATUS_TRANSITIONS = ORDER_STATUS_TRANSITIONS;

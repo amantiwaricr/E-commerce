@@ -24,6 +24,9 @@ const productBody = (partial = false) => {
     body('tags').optional().isArray({ max: 20 }),
     body('tags.*').optional().isString().trim().isLength({ max: 40 }),
     body('isAvailable').optional().isBoolean().toBoolean(),
+    body('isFeatured').optional().isBoolean().toBoolean(),
+    body('rating').optional().isFloat({ min: 0, max: 5 }).toFloat(),
+    body('reviewCount').optional().isInt({ min: 0 }).toInt(),
   ];
 };
 
@@ -73,7 +76,9 @@ module.exports = {
     query('minPrice').optional().isFloat({ min: 0 }).toFloat(),
     query('maxPrice').optional().isFloat({ min: 0 }).toFloat(),
     query('search').optional().trim().isLength({ max: 100 }),
-    query('sort').optional().isIn(['newest', 'price-asc', 'price-desc', 'name']),
+    query('sort').optional().isIn(['newest', 'price-asc', 'price-desc', 'name', 'rating']),
+    query('minRating').optional().isFloat({ min: 0, max: 5 }).toFloat(),
+    query('tags').optional().trim().isLength({ max: 300 }),
     query('availability').optional().isIn(['in-stock', 'available', 'unavailable']),
   ],
 
@@ -95,6 +100,7 @@ module.exports = {
 
   createOrder: [
     body('paymentMethod').isIn(Order.PAYMENT_METHODS).withMessage('Choose eSewa, card, or cash on delivery'),
+    body('deliveryMethod').optional().isIn(Order.DELIVERY_METHODS).withMessage('Choose standard delivery or pick up'),
     ...shippingAddressBody,
   ],
 

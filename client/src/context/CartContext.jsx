@@ -6,6 +6,7 @@ import { useToast } from './ToastContext';
 
 const CartContext = createContext(null);
 const GUEST_CART_KEY = 'fmn_guest_cart';
+const DELIVERY_KEY = 'fmn_delivery_method';
 
 const readGuestCart = () => {
   try {
@@ -19,10 +20,11 @@ const readGuestCart = () => {
 const writeGuestCart = (items) => localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
 
 /** Mirrors the server's pricing rules so a guest sees the same totals. */
-const priceGuestCart = (lines) => {
+const priceGuestCart = (lines, deliveryMethod = 'standard') => {
   const items = lines.map((line) => ({ ...line, subtotal: Number(line.price) * line.quantity }));
   const itemsTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  const deliveryCharge = itemsTotal > 0 && itemsTotal < FREE_DELIVERY_THRESHOLD ? DELIVERY_CHARGE : 0;
+  const chargeable = deliveryMethod !== 'pickup' && itemsTotal > 0 && itemsTotal < FREE_DELIVERY_THRESHOLD;
+  const deliveryCharge = chargeable ? DELIVERY_CHARGE : 0;
   return { items, itemsTotal, deliveryCharge, totalAmount: itemsTotal + deliveryCharge };
 };
 
@@ -33,16 +35,19 @@ export const CartProvider = ({ children }) => {
   const toast = useToast();
   const [cart, setCart] = useState(EMPTY_CART);
   const [loading, setLoading] = useState(false);
+  const [deliveryMethod, setDeliveryMethodState] = useState(
+    () => localStorage.getItem(DELIVERY_KEY) || 'standard'
+  );
   const mergedRef = useRef(false);
 
   const refreshServerCart = useCallback(async () => {
-    const { data } = await api.get('/cart');
+    const { data } = await api.get('/cart', { params: { deliveryMethod } });
     setCart(data.cart);
     if (data.cart.removed?.length) {
       toast.notify(`${data.cart.removed.join(', ')} is no longer available and was removed from your cart.`);
     }
     return data.cart;
-  }, [toast]);
+  }, [toast, deliveryMethod]);
 
   // On sign-in, fold the guest cart into the server cart exactly once.
   useEffect(() => {
@@ -51,7 +56,7 @@ export const CartProvider = ({ children }) => {
     const sync = async () => {
       if (!isAuthenticated) {
         mergedRef.current = false;
-        setCart(priceGuestCart(readGuestCart()));
+        setCart(priceGuestCart(readGuestCart(), deliveryMethod));
         return;
       }
 
@@ -75,7 +80,13 @@ export const CartProvider = ({ children }) => {
 
     sync();
     // `toast` is stable per provider; refreshServerCart depends only on it.
-  }, [isAuthenticated, authLoading, refreshServerCart, toast]);
+  }, [isAuthenticated, authLoading, refreshServerCart, toast, deliveryMethod]);
+
+  /** Persisted so the choice survives a reload and reaches checkout. */
+  const setDeliveryMethod = useCallback((method) => {
+    localStorage.setItem(DELIVERY_KEY, method);
+    setDeliveryMethodState(method);
+  }, []);
 
   const addItem = useCallback(
     async (product, quantity = 1) => {
@@ -100,7 +111,7 @@ export const CartProvider = ({ children }) => {
           });
 
         writeGuestCart(lines);
-        setCart(priceGuestCart(lines));
+        setCart(priceGuestCart(lines, deliveryMethod));
         toast.success(`${product.name} added to your cart`);
         return;
       }
@@ -124,7 +135,7 @@ export const CartProvider = ({ children }) => {
       if (!isAuthenticated) {
         const lines = readGuestCart().map((l) => (l.productId === productId ? { ...l, quantity } : l));
         writeGuestCart(lines);
-        setCart(priceGuestCart(lines));
+        setCart(priceGuestCart(lines, deliveryMethod));
         return;
       }
 
@@ -146,7 +157,7 @@ export const CartProvider = ({ children }) => {
       if (!isAuthenticated) {
         const lines = readGuestCart().filter((l) => l.productId !== productId);
         writeGuestCart(lines);
-        setCart(priceGuestCart(lines));
+        setCart(priceGuestCart(lines, deliveryMethod));
         return;
       }
 
@@ -182,9 +193,15 @@ export const CartProvider = ({ children }) => {
       updateItem,
       removeItem,
       clearCart,
-      refreshCart: () => (isAuthenticated ? refreshServerCart() : setCart(priceGuestCart(readGuestCart()))),
+      deliveryMethod,
+      setDeliveryMethod,
+      refreshCart: () =>
+        isAuthenticated ? refreshServerCart() : setCart(priceGuestCart(readGuestCart(), deliveryMethod)),
     }),
-    [cart, loading, addItem, updateItem, removeItem, clearCart, isAuthenticated, refreshServerCart]
+    [
+      cart, loading, addItem, updateItem, removeItem, clearCart,
+      isAuthenticated, refreshServerCart, deliveryMethod, setDeliveryMethod,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

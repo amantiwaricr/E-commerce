@@ -326,6 +326,7 @@ The suites cover the critical flows:
 | `tests/esewa.test.js` | Signature generation and callback signature verification |
 | `tests/units.test.js` | Pricing rules, phone normalisation, input sanitising, notification templates |
 | `tests/upload.test.js` | Admin image upload: storage, mimetype rejection, empty requests |
+| `tests/catalogue.test.js` | Facets, tag and rating filters, favourites |
 | `tests/devlogin.test.js` | Development login: disabled by default, refused in production, roles when enabled |
 
 `esewa.test.js`, `units.test.js` and `upload.test.js` need nothing but Node. The other three need MongoDB:
@@ -369,9 +370,17 @@ Every response is JSON. Errors come back as
 ### Catalogue
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| GET | `/api/products` | Public | List with `category`, `search`, `minPrice`, `maxPrice`, `availability`, `sort`, `page` |
+| GET | `/api/products` | Public | List with `category`, `search`, `minPrice`, `maxPrice`, `minRating`, `tags`, `availability`, `sort`, `page` |
+| GET | `/api/products/facets` | Public | Price bounds + histogram, tag counts, category counts, rating counts — everything the sidebar needs in one call |
 | GET | `/api/products/categories` | Public | Categories with product counts |
 | GET | `/api/products/:slug` | Public | Product detail |
+
+### Favourites
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/favourites` | Customer | Saved products |
+| POST | `/api/favourites/:productId` | Customer | Save (idempotent) |
+| DELETE | `/api/favourites/:productId` | Customer | Unsave (idempotent) |
 
 ### Cart
 | Method | Endpoint | Access | Description |
@@ -423,14 +432,16 @@ Every response is JSON. Errors come back as
 `role` (`customer` \| `admin`), `phone`, `addresses[]`, `isBlocked`, `lastLoginAt`, timestamps.
 
 **Product** — `name`, `slug` (unique, indexed), `description`, `category`, `price`, `unit`,
-`stock`, `images[]`, `isAvailable`, `tags[]`, timestamps. Text index on name/description/tags;
-compound index on `category + price`.
+`stock`, `images[]`, `isAvailable`, `tags[]`, `rating`, `reviewCount`, `isFeatured`, timestamps.
+Text index on name/description/tags; compound index on `category + price`; index on `rating`.
+A product rated 4.8+ earns the storefront's "Top item" flag; the featured one takes the hero tile.
 
 **Cart** — `user` (unique), `items[{ product, quantity }]`.
 
 **Order** — `orderNumber` (unique, indexed, `FMN-YYMM-NNNNN`), `user`, `items[]` (denormalised
 so history survives product edits), `itemsTotal`, `deliveryCharge`, `totalAmount`,
-`paymentMethod`, `paymentStatus`, `payment{ transactionUuid, referenceId, paidAt, … }`,
+`paymentMethod`, `deliveryMethod` (`standard` | `pickup` — pick-up carries no delivery charge),
+`paymentStatus`, `payment{ transactionUuid, referenceId, paidAt, … }`,
 `orderStatus`, `shippingAddress`, `trackingInfo{ carrier, trackingCode, estimatedDelivery,
 timeline[] }`, `notifications`, timestamps.
 

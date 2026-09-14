@@ -15,6 +15,9 @@ const BLANK = {
   images: [],
   tags: [],
   isAvailable: true,
+  isFeatured: false,
+  rating: '',
+  reviewCount: '',
 };
 
 export default function ProductFormPage() {
@@ -46,6 +49,9 @@ export default function ProductFormPage() {
           images: data.product.images || [],
           tags: data.product.tags || [],
           isAvailable: data.product.isAvailable,
+          isFeatured: Boolean(data.product.isFeatured),
+          rating: data.product.rating ?? '',
+          reviewCount: data.product.reviewCount ?? '',
         })
       )
       .catch((err) => setError(err.message))
@@ -94,6 +100,8 @@ export default function ProductFormPage() {
       ...form,
       price: Number(form.price),
       stock: Number(form.stock),
+      rating: form.rating === '' ? 0 : Number(form.rating),
+      reviewCount: form.reviewCount === '' ? 0 : Number(form.reviewCount),
       tags: Array.isArray(form.tags)
         ? form.tags
         : String(form.tags)
@@ -222,10 +230,38 @@ export default function ProductFormPage() {
           )}
         </div>
 
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor="rating">Customer rating (0–5)</label>
+            <input
+              id="rating"
+              type="number"
+              min="0"
+              max="5"
+              step="0.1"
+              value={form.rating}
+              onChange={setField('rating')}
+            />
+            {fieldErrors.rating && <span className="error">{fieldErrors.rating}</span>}
+            <span className="small muted">4.8 and above earns the storefront&apos;s “Top item” flag.</span>
+          </div>
+          <div className="field">
+            <label htmlFor="reviewCount">Number of reviews</label>
+            <input id="reviewCount" type="number" min="0" value={form.reviewCount} onChange={setField('reviewCount')} />
+          </div>
+        </div>
+
         <div className="field checkbox">
           <input id="isAvailable" type="checkbox" checked={form.isAvailable} onChange={setField('isAvailable')} />
           <label htmlFor="isAvailable" style={{ margin: 0 }}>
             Published — visible in the storefront
+          </label>
+        </div>
+
+        <div className="field checkbox">
+          <input id="isFeatured" type="checkbox" checked={form.isFeatured} onChange={setField('isFeatured')} />
+          <label htmlFor="isFeatured" style={{ margin: 0 }}>
+            Featured — takes the large hero tile in the storefront grid
           </label>
         </div>
 

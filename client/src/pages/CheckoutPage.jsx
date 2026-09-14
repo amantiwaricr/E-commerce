@@ -21,7 +21,7 @@ const BLANK_ADDRESS = {
 
 export default function CheckoutPage() {
   const { user } = useAuth();
-  const { cart, refreshCart } = useCart();
+  const { cart, refreshCart, deliveryMethod } = useCart();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -66,7 +66,7 @@ export default function CheckoutPage() {
     setFieldErrors({});
 
     try {
-      const { data } = await api.post('/orders', { paymentMethod, shippingAddress: address });
+      const { data } = await api.post('/orders', { paymentMethod, deliveryMethod, shippingAddress: address });
 
       if (data.payment) {
         // Hand the browser to eSewa with the server-signed payload.
@@ -93,7 +93,7 @@ export default function CheckoutPage() {
           title="Nothing to check out"
           message="Your cart is empty."
           actionLabel="Browse the catalogue"
-          actionTo="/products"
+          actionTo="/"
         />
       </div>
     );
@@ -110,7 +110,7 @@ export default function CheckoutPage() {
       <form className="checkout-grid" onSubmit={placeOrder}>
         <div className="stack">
           <section className="panel">
-            <h3>Delivery address</h3>
+            <h3>{deliveryMethod === 'pickup' ? 'Contact details for pick-up' : 'Delivery address'}</h3>
 
             <div className="field-row">
               <div className="field">
@@ -217,7 +217,7 @@ export default function CheckoutPage() {
             <span>{formatNpr(cart.itemsTotal)}</span>
           </div>
           <div className="summary-line">
-            <span>Delivery</span>
+            <span>{deliveryMethod === 'pickup' ? 'Pick up in store' : 'Delivery'}</span>
             <span>{cart.deliveryCharge ? formatNpr(cart.deliveryCharge) : 'Free'}</span>
           </div>
           <div className="summary-line total">

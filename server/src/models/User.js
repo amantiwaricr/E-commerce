@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['customer', 'admin'], default: 'customer', index: true },
     phone: { type: String, trim: true, maxlength: 20, default: '' },
     addresses: { type: [addressSchema], default: [] },
+    favourites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     isBlocked: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
   },
@@ -46,6 +47,7 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     role: this.role,
     phone: this.phone,
     addresses: this.addresses,
+    favourites: (this.favourites || []).map((id) => id.toString()),
     isBlocked: this.isBlocked,
     createdAt: this.createdAt,
   };

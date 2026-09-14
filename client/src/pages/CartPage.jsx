@@ -6,7 +6,7 @@ import QuantityStepper from '../components/QuantityStepper';
 import { formatNpr } from '../utils/format';
 
 export default function CartPage() {
-  const { cart, updateItem, removeItem, clearCart, loading } = useCart();
+  const { cart, updateItem, removeItem, clearCart, loading, deliveryMethod } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -17,7 +17,7 @@ export default function CartPage() {
           title="Your cart is empty"
           message="Add some fresh cuts and they will show up here."
           actionLabel="Browse the catalogue"
-          actionTo="/products"
+          actionTo="/"
         />
       </div>
     );
@@ -76,7 +76,7 @@ export default function CartPage() {
             <span>{formatNpr(cart.itemsTotal)}</span>
           </div>
           <div className="summary-line">
-            <span>Delivery</span>
+            <span>{deliveryMethod === 'pickup' ? 'Pick up in store' : 'Delivery'}</span>
             <span>{cart.deliveryCharge ? formatNpr(cart.deliveryCharge) : 'Free'}</span>
           </div>
           <div className="summary-line total">
@@ -100,7 +100,7 @@ export default function CartPage() {
             {isAuthenticated ? 'Proceed to checkout' : 'Sign in to check out'}
           </button>
 
-          <Link className="btn secondary block" to="/products" style={{ marginTop: 10 }}>
+          <Link className="btn secondary block" to="/" style={{ marginTop: 10 }}>
             Keep shopping
           </Link>
         </aside>

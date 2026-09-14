@@ -1,42 +1,63 @@
 import { Link } from 'react-router-dom';
+import { HeartIcon, TagIcon } from './icons';
 import { formatNpr } from '../utils/format';
 import { useCart } from '../context/CartContext';
+import { useFavourites } from '../context/FavouritesContext';
+
+const idOf = (product) => product.id || product._id;
+
+/** Products this well reviewed earn the amber flag, as in the reference. */
+const isTopItem = (product) => product.rating >= 4.8;
 
 export default function ProductCard({ product }) {
   const { addItem, loading } = useCart();
-  const outOfStock = !product.isAvailable || product.stock <= 0;
+  const { isFavourite, toggle } = useFavourites();
+
+  const id = idOf(product);
+  const out = !product.isAvailable || product.stock <= 0;
+  const on = isFavourite(id);
 
   return (
-    <article className="product-card">
-      <Link to={`/products/${product.slug}`} className="product-thumb">
+    <article className="pcard">
+      <Link className="pcard-tile" to={`/products/${product.slug}`}>
         {product.images?.[0] ? (
           <img src={product.images[0]} alt={product.name} loading="lazy" />
         ) : (
-          <div className="placeholder">No image</div>
+          <div className="noimg">No image</div>
         )}
+        {isTopItem(product) && <span className="top-item">Top item</span>}
       </Link>
 
-      <div className="body">
-        <span className="badge">{product.category}</span>
-        <h3>
+      <button
+        type="button"
+        className={`heart ${on ? 'on' : ''}`}
+        onClick={() => toggle(id)}
+        aria-pressed={on}
+        aria-label={on ? `Remove ${product.name} from favourites` : `Save ${product.name} to favourites`}
+      >
+        <HeartIcon filled={on} />
+      </button>
+
+      <div className="pcard-body">
+        <h3 className="pcard-title truncate" title={product.name}>
           <Link to={`/products/${product.slug}`}>{product.name}</Link>
         </h3>
-        <p className="price">
-          {formatNpr(product.price)} <span>/ {product.unit}</span>
-        </p>
-        <p className="small muted" style={{ margin: 0 }}>
-          {outOfStock ? 'Out of stock' : `${product.stock} ${product.unit} available`}
-        </p>
 
-        <button
-          type="button"
-          className="btn block"
-          style={{ marginTop: 'auto' }}
-          disabled={outOfStock || loading}
-          onClick={() => addItem(product, 1)}
-        >
-          {outOfStock ? 'Out of stock' : 'Add to cart'}
-        </button>
+        <div className="price-row">
+          {product.compareAtPrice > product.price && (
+            <span className="price-was">{formatNpr(product.compareAtPrice)}</span>
+          )}
+          <button
+            type="button"
+            className="price-pill"
+            disabled={out || loading}
+            onClick={() => addItem(product, 1)}
+            title={out ? 'Out of stock' : `Add ${product.name} to cart`}
+          >
+            <TagIcon />
+            {out ? 'Out of stock' : formatNpr(product.price)}
+          </button>
+        </div>
       </div>
     </article>
   );

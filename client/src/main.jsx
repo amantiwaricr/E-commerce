@@ -7,6 +7,7 @@ import App from './App';
 import { GOOGLE_CLIENT_ID } from './config';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { FavouritesProvider } from './context/FavouritesContext';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 
@@ -16,9 +17,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
-            <CartProvider>
-              <App />
-            </CartProvider>
+            <FavouritesProvider>
+              <CartProvider>
+                <App />
+              </CartProvider>
+            </FavouritesProvider>
           </AuthProvider>
         </ToastProvider>
       </BrowserRouter>

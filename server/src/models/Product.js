@@ -21,13 +21,19 @@ const productSchema = new mongoose.Schema(
       validate: [(val) => val.length <= 8, 'A product can have at most 8 images'],
     },
     isAvailable: { type: Boolean, default: true, index: true },
-    tags: { type: [String], default: [] },
+    tags: { type: [String], default: [], index: true },
+    // Aggregate customer rating, shown on cards and filterable from the sidebar.
+    rating: { type: Number, min: 0, max: 5, default: 0 },
+    reviewCount: { type: Number, min: 0, default: 0 },
+    // Highlights one product per view in the storefront's feature tile.
+    isFeatured: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );
 
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ category: 1, price: 1 });
+productSchema.index({ rating: -1 });
 
 /** Keeps the slug in sync with the name and guarantees uniqueness with a suffix. */
 productSchema.pre('validate', async function ensureSlug(next) {
