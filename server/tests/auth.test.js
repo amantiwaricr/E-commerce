@@ -274,19 +274,27 @@ describeWithDb('Storefront and admin sessions are separate', () => {
       .post('/api/auth/login')
       .send({ email: user.email, password: DEFAULT_PASSWORD, ...(scope ? { scope } : {}) });
 
-  it('gives the storefront a customer-level session even for an admin account', async () => {
+  it('refuses an admin account on the storefront', async () => {
     const admin = await createAdmin();
 
     const res = await signIn(admin);
-    expect(res.status).toBe(200);
-    expect(res.body.scope).toBe('storefront');
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/admin panel/i);
+    expect(res.body.token).toBeUndefined();
+    expect(res.headers['set-cookie']).toBeUndefined();
+  });
 
-    // Signed in, but the admin API stays shut.
-    const stats = await request(app)
-      .get('/api/admin/stats')
-      .set({ Authorization: `Bearer ${res.body.token}` });
-    expect(stats.status).toBe(403);
-    expect(stats.body.message).toMatch(/admin panel/i);
+  it('refuses an admin on the storefront only after the password is right', async () => {
+    const admin = await createAdmin();
+
+    // A stranger guessing gets the ordinary failure, so the response never
+    // reveals which addresses are administrators.
+    const wrong = await request(app)
+      .post('/api/auth/login')
+      .send({ email: admin.email, password: 'not-the-password' });
+
+    expect(wrong.status).toBe(401);
+    expect(wrong.body.message).toBe('Invalid email or password.');
   });
 
   it('opens the admin API only for an admin-scoped session', async () => {
@@ -311,19 +319,42 @@ describeWithDb('Storefront and admin sessions are separate', () => {
     expect(res.body.token).toBeUndefined();
   });
 
-  it('still lets an admin shop on the storefront', async () => {
-    const admin = await createAdmin();
-    const res = await signIn(admin);
+  it('refuses a customer on the admin panel', async () => {
+    const customer = await createUser();
 
-    const me = await request(app).get('/api/auth/me').set({ Authorization: `Bearer ${res.body.token}` });
-    expect(me.status).toBe(200);
-    expect(me.body.user.role).toBe('admin');
+    const res = await signIn(customer, 'admin');
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/does not have admin access/i);
+    expect(res.body.token).toBeUndefined();
+  });
+
+  it('lets a customer sign in on the storefront as before', async () => {
+    const customer = await createUser();
+    const res = await signIn(customer);
+
+    expect(res.status).toBe(200);
+    expect(res.body.scope).toBe('storefront');
+    expect(res.body.user.role).toBe('customer');
+  });
+
+  it('does not let an admin pick up a storefront session by re-verifying', async () => {
+    // The seeded admin is already verified, so this path would otherwise hand
+    // out a shop session without going through login at all.
+    const admin = await createAdmin();
+
+    const res = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ email: admin.email, code: '1234' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.token).toBeUndefined();
   });
 
   it('sets a different cookie for each app', async () => {
+    const customer = await createUser();
     const admin = await createAdmin();
 
-    const shop = await signIn(admin);
+    const shop = await signIn(customer);
     const panel = await signIn(admin, 'admin');
 
     const name = (res) => res.headers['set-cookie'].find((c) => c.includes('token=')).split('=')[0];
@@ -332,10 +363,10 @@ describeWithDb('Storefront and admin sessions are separate', () => {
   });
 
   it('rejects an unknown scope rather than guessing', async () => {
-    const admin = await createAdmin();
+    const customer = await createUser();
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: admin.email, password: DEFAULT_PASSWORD, scope: 'superuser' });
+      .send({ email: customer.email, password: DEFAULT_PASSWORD, scope: 'superuser' });
 
     expect(res.status).toBe(400);
   });

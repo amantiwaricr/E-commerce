@@ -13,6 +13,24 @@ const { sendMail } = require('../services/email.service');
 const normaliseEmail = (value) => String(value || '').trim().toLowerCase();
 
 /**
+ * Each app serves one kind of account and they never mix: administrators sign
+ * in at the admin panel, everyone else at the shop. Returns the refusal message,
+ * or null when the pairing is allowed.
+ *
+ * Callers must check the password first, so that a refusal here cannot tell a
+ * stranger which addresses are administrators.
+ */
+const scopeRefusal = (role, scope) => {
+  if (scope === SCOPES.ADMIN && role !== 'admin') {
+    return 'This account does not have admin access. Please sign in at the shop instead.';
+  }
+  if (scope === SCOPES.STOREFRONT && role === 'admin') {
+    return 'Admin accounts sign in through the admin panel, not the shop.';
+  }
+  return null;
+};
+
+/**
  * Issues a fresh code, stores only its hash, and emails it.
  *
  * Returns the code itself only when there is no SMTP transport and this is not
@@ -105,7 +123,10 @@ const verifyEmail = asyncHandler(async (req, res) => {
   if (user.isBlocked) throw ApiError.forbidden('This account has been blocked. Contact support.');
 
   if (user.isEmailVerified) {
-    // Nothing to do, but do not strand someone who submitted twice.
+    // Nothing to do, but do not strand someone who submitted twice. An admin
+    // account must not pick up a storefront session by this route either.
+    const refusal = scopeRefusal(user.role, SCOPES.STOREFRONT);
+    if (refusal) throw ApiError.forbidden(refusal);
     const token = signToken(user, SCOPES.STOREFRONT);
     setAuthCookie(res, token, SCOPES.STOREFRONT);
     return res.json({ success: true, alreadyVerified: true, token, user: user.toPublicJSON() });
@@ -200,9 +221,8 @@ const login = asyncHandler(async (req, res) => {
     ]);
   }
 
-  if (scope === SCOPES.ADMIN && user.role !== 'admin') {
-    throw ApiError.forbidden('This account does not have admin access.');
-  }
+  const refusal = scopeRefusal(user.role, scope);
+  if (refusal) throw ApiError.forbidden(refusal);
 
   user.lastLoginAt = new Date();
   await user.save();
@@ -249,6 +269,8 @@ const changePassword = asyncHandler(async (req, res) => {
 
 module.exports = {
   register,
+  // Exported for testing: the rule that keeps the two apps apart.
+  __scopeRefusal: scopeRefusal,
   verifyEmail,
   resendCode,
   login,

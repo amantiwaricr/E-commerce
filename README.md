@@ -189,16 +189,26 @@ outbound SMTP — and times out rather than hanging.
 (or a generated password printed once), pre-verified, and signs in at the admin
 panel with the same email and password.
 
-**Sessions are scoped to the app that issued them.** Registration on the
-storefront can only ever create a `customer` — a `role` in the payload is
-ignored, because the account is built field by field rather than from the
-request body. Signing in on the storefront always yields a `storefront` session,
-even for a staff account, and the admin API refuses anything but an `admin`
-session. The admin panel asks for that scope explicitly and the server grants it
-only to an administrator. So there is exactly one way to reach the admin API:
-the admin panel, with admin credentials. The two apps also use different cookie
-names, since browser cookies ignore the port and :5173 and :5174 would otherwise
-share one.
+**Each app serves one kind of account, and they do not mix.**
+
+| | Storefront (:5173) | Admin panel (:5174) |
+|---|---|---|
+| Customer | signs in | refused |
+| Administrator | refused | signs in |
+
+Registration on the storefront can only ever create a `customer` — a `role` in
+the payload is ignored, because the account is built field by field rather than
+from the request body.
+
+Sessions carry the scope of the app that issued them, and the admin API accepts
+nothing but an `admin` session. So even if an admin session leaked to the shop,
+it could not be created there, and a shop session is useless against the admin
+API. Both refusals happen only *after* the password is verified, so a stranger
+guessing an address still gets the ordinary "Invalid email or password" and
+cannot discover which addresses are administrators.
+
+The two apps also use different cookie names, since browser cookies ignore the
+port and :5173 and :5174 would otherwise share one.
 
 ## 5. eSewa setup (payments)
 

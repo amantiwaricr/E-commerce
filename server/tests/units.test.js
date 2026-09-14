@@ -310,3 +310,42 @@ describe('The admin guard', () => {
     expect(check(admin, undefined).allowed).toBe(false);
   });
 });
+
+describe('Which accounts each app accepts', () => {
+  const { SCOPES } = require('../src/middleware/auth');
+  const { __scopeRefusal: refusal } = require('../src/controllers/auth.controller');
+
+  it('lets a customer sign in at the shop', () => {
+    expect(refusal('customer', SCOPES.STOREFRONT)).toBeNull();
+  });
+
+  it('lets an administrator sign in at the admin panel', () => {
+    expect(refusal('admin', SCOPES.ADMIN)).toBeNull();
+  });
+
+  it('refuses an administrator at the shop, pointing them at the panel', () => {
+    const message = refusal('admin', SCOPES.STOREFRONT);
+    expect(message).toMatch(/admin panel/i);
+  });
+
+  it('refuses a customer at the admin panel, pointing them at the shop', () => {
+    const message = refusal('customer', SCOPES.ADMIN);
+    expect(message).toMatch(/does not have admin access/i);
+    expect(message).toMatch(/shop/i);
+  });
+
+  it('covers every role and app pairing, allowing exactly the two matching ones', () => {
+    const pairs = [
+      ['customer', SCOPES.STOREFRONT],
+      ['customer', SCOPES.ADMIN],
+      ['admin', SCOPES.STOREFRONT],
+      ['admin', SCOPES.ADMIN],
+    ];
+    const allowed = pairs.filter(([role, scope]) => refusal(role, scope) === null);
+
+    expect(allowed).toEqual([
+      ['customer', SCOPES.STOREFRONT],
+      ['admin', SCOPES.ADMIN],
+    ]);
+  });
+});
