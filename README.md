@@ -67,7 +67,9 @@ npm run install:all
 npm run setup
 ```
 
-Creates both `.env` files from their examples and prompts for the three values
+Creates any missing `.env` file from its example, restores settings that an
+existing file has lost (your current values are kept), keeps the three apps
+pointed at the same API port, and prompts for the three values
 that cannot be defaulted — your Google client ID (written to both files, since
 they must match), the Gmail address that becomes the store admin, and the API
 port. Re-run it any time; it edits values in place. It also takes flags for

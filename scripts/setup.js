@@ -41,6 +41,39 @@ const ensureEnvFile = (target) => {
   return true;
 };
 
+/** The keys an env file actually defines, ignoring comments and blanks. */
+const keysIn = (content) =>
+  new Set(
+    content
+      .split('\n')
+      .map((line) => (line.match(/^\s*([A-Z0-9_]+)\s*=/) || [])[1])
+      .filter(Boolean)
+  );
+
+/**
+ * Adds any key the example defines but the live file is missing, keeping the
+ * values already set. An .env that was emptied, truncated or written by hand
+ * before a new key existed is repaired rather than silently left broken.
+ */
+const backfillFromExample = (target) => {
+  const example = fs.readFileSync(`${target}.example`, 'utf8');
+  const current = fs.readFileSync(target, 'utf8');
+  const have = keysIn(current);
+
+  const missing = example
+    .split('\n')
+    .filter((line) => {
+      const key = (line.match(/^\s*([A-Z0-9_]+)\s*=/) || [])[1];
+      return key && !have.has(key);
+    });
+
+  if (!missing.length) return 0;
+
+  const block = ['', '# Added by `npm run setup` — values from .env.example', ...missing, ''].join('\n');
+  fs.writeFileSync(target, `${current.trimEnd()}\n${block}`);
+  return missing.length;
+};
+
 const isValidGoogleId = (value) =>
   value.endsWith(GOOGLE_ID_SUFFIX) && !value.startsWith('your-') && value.length > GOOGLE_ID_SUFFIX.length;
 
@@ -68,6 +101,12 @@ const main = async () => {
     ensureEnvFile(ADMIN_ENV) && 'admin/.env',
   ].filter(Boolean);
   created.forEach((file) => console.log(`✓ created ${file} from its example`));
+
+  // Repair files that exist but are missing keys.
+  [[SERVER_ENV, 'server/.env'], [CLIENT_ENV, 'client/.env'], [ADMIN_ENV, 'admin/.env']].forEach(([file, label]) => {
+    const added = backfillFromExample(file);
+    if (added) console.log(`✓ ${label}: restored ${added} missing setting${added === 1 ? '' : 's'} from the example`);
+  });
 
   let googleClientId = arg('google-client-id');
   let adminEmail = arg('admin-email');
@@ -115,6 +154,19 @@ const main = async () => {
   if (adminEmail) {
     server = setEnvValue(server, 'SEED_ADMIN_EMAIL', adminEmail);
   }
+  // No port given? Keep the apps pointed at whatever the server is already set
+  // to, so a restored file cannot drift from a customised PORT.
+  if (!port) {
+    const existing = (server.match(/^PORT=(\d+)$/m) || [])[1];
+    const clientPort = (client.match(/^VITE_API_URL=.*?:(\d+)/m) || [])[1];
+    if (existing && existing !== clientPort) {
+      client = setEnvValue(client, 'VITE_API_URL', `http://localhost:${existing}/api`);
+      admin = setEnvValue(admin, 'VITE_API_URL', `http://localhost:${existing}/api`);
+      server = setEnvValue(server, 'BACKEND_URL', `http://localhost:${existing}`);
+      console.log(`  · pointed the apps at the API port already set in server/.env (${existing})`);
+    }
+  }
+
   if (port) {
     server = setEnvValue(server, 'PORT', port);
     server = setEnvValue(server, 'BACKEND_URL', `http://localhost:${port}`);

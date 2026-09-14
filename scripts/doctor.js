@@ -83,6 +83,23 @@ const main = async () => {
     process.exit(1);
   }
 
+  // A file that exists but defines almost nothing is the common broken state:
+  // every later check fails confusingly, so call out the real problem once.
+  const thin = [
+    ['server/.env', server, ['MONGODB_URI', 'GOOGLE_CLIENT_ID', 'JWT_SECRET', 'PORT']],
+    ['client/.env', client, ['VITE_API_URL', 'VITE_GOOGLE_CLIENT_ID']],
+  ].filter(([, env, required]) => required.some((key) => env[key] === undefined));
+
+  if (thin.length) {
+    thin.forEach(([label, env, required]) => {
+      const missing = required.filter((key) => env[key] === undefined);
+      bad(`${label} is incomplete — missing ${missing.join(', ')}`,
+          'Run `npm run setup` to restore the missing settings from .env.example (your existing values are kept).');
+    });
+    console.log('\nRun `npm run setup`, then `npm run doctor` again.\n');
+    process.exit(1);
+  }
+
   console.log('\nGoogle sign-in');
   const serverId = server.GOOGLE_CLIENT_ID || '';
   const clientId = client.VITE_GOOGLE_CLIENT_ID || '';
