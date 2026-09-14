@@ -409,6 +409,11 @@ Both palettes live at the top of `client/src/index.css`: `:root` holds light,
 the aliases underneath. No rule below that block names a colour directly, so
 adding a third theme is a matter of one more token set.
 
+In light mode the footer sits on its own grey band (`--footer-bg`), which
+separates it from the white page above and lets its columns read as a block;
+its payment chips go white to stay crisp against it. Dark mode keeps the
+footer on the page ground, as it always had.
+
 Two elements stay dark in both themes on purpose — the feature tile in the
 catalogue and the call-to-action band on the landing page. Both carry white
 type over a photograph or a brand slab, and both say so in a comment.

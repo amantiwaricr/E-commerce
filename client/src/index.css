@@ -54,6 +54,12 @@
   --hero-empty-a: #f1ded7;
   --hero-empty-b: #e8ede1;
 
+  /* The footer sits on its own grey band so it reads as a separate plate
+     rather than more white page; its chips go white to stay crisp on it. */
+  --footer-bg: #e9ece5;
+  --footer-line: rgba(17, 21, 14, .11);
+  --footer-chip: #ffffff;
+
   --shadow-card: 0 1px 2px rgba(17, 21, 14, .05), 0 10px 26px rgba(17, 21, 14, .05);
   --shadow-pop: 0 14px 40px rgba(17, 21, 14, .16);
   --shadow-float: 0 4px 14px rgba(17, 21, 14, .14);
@@ -102,6 +108,11 @@
   --hero-empty-a: #3a1512;
   --hero-empty-b: #1a0f0c;
 
+  /* Dark mode keeps the footer on the page ground, as it always has. */
+  --footer-bg: transparent;
+  --footer-line: rgba(255, 255, 255, .1);
+  --footer-chip: transparent;
+
   --shadow-card: none;
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, .5);
   --shadow-float: 0 4px 14px rgba(0, 0, 0, .45);
@@ -129,9 +140,11 @@
 }
 
 /* Colour changes are instant; only the switch itself is worth easing. */
-body, .shell, .topbar, .card, .home { transition: background-color .18s ease, color .18s ease; }
+body, .shell, .topbar, .card, .home, .home-footer, .site-footer {
+  transition: background-color .18s ease, color .18s ease;
+}
 @media (prefers-reduced-motion: reduce) {
-  body, .shell, .topbar, .card, .home { transition: none; }
+  body, .shell, .topbar, .card, .home, .home-footer, .site-footer { transition: none; }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -634,7 +647,7 @@ tbody tr:hover { background: var(--row-hover); }
 .toast button { background: none; border: 0; color: inherit; cursor: pointer; opacity: .8; margin-left: auto; }
 @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-.site-footer { padding: 22px var(--gutter); color: var(--ink-3); font-size: .78rem; text-align: center; border-top: 1px solid var(--line); }
+.site-footer { padding: 22px var(--gutter); color: var(--ink-3); font-size: .78rem; text-align: center; background: var(--footer-bg); border-top: 1px solid var(--footer-line); }
 
 .filter-toggle { display: none; }
 

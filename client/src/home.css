@@ -365,7 +365,7 @@
 .map-caption a:hover { color: var(--accent-ink); }
 
 /* ── Footer ──────────────────────────────────────────────── */
-.home-footer { border-top: 1px solid var(--hairline); padding: 56px 0 28px; color: var(--paper-3); font-size: .86rem; }
+.home-footer { background: var(--footer-bg); border-top: 1px solid var(--footer-line); padding: 56px 0 28px; color: var(--paper-3); font-size: .86rem; }
 .home-footer a { color: var(--paper-2); transition: color .12s ease; }
 .home-footer a:hover { color: var(--accent-ink); }
 
@@ -384,13 +384,14 @@
 .foot-pay {
   margin-top: 36px;
   padding-top: 22px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--footer-line);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .foot-pay-label { font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--paper); }
 .pay-chip {
   display: inline-flex; align-items: center; gap: 7px;
-  border: 1px solid var(--hairline);
+  background: var(--footer-chip);
+  border: 1px solid var(--footer-line);
   border-radius: 999px;
   padding: 7px 14px;
   font-size: .79rem; font-weight: 600;
@@ -402,7 +403,7 @@
 .foot-bottom {
   margin-top: 22px;
   padding-top: 18px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--footer-line);
   display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
   font-size: .78rem;
 }
