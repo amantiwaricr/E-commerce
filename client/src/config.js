@@ -5,6 +5,35 @@ export const IS_DEV = Boolean(import.meta.env.DEV);
 
 export const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Fresh Meat Nepal';
 export const SUPPORT_PHONE = import.meta.env.VITE_SUPPORT_PHONE || '+977-9800000000';
+export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'hello@freshmeatnepal.com';
+
+/** Where the shop physically is — shown on the landing page and in the footer. */
+export const STORE_ADDRESS = {
+  line1: import.meta.env.VITE_STORE_ADDRESS_LINE1 || 'Balkumari Chowk, Balkumari',
+  line2: import.meta.env.VITE_STORE_ADDRESS_LINE2 || 'Lalitpur 44700, Bagmati Province, Nepal',
+  hours: import.meta.env.VITE_STORE_HOURS || 'Sunday to Friday, 7:00 AM – 8:00 PM · Saturday, 7:00 AM – 2:00 PM',
+};
+
+/**
+ * The map is embedded keyless via `maps.google.com/maps?output=embed`, which
+ * needs no API key or billing account. Set VITE_STORE_MAP_EMBED_URL to a full
+ * Google Maps Embed API URL if you later want a keyed, styled map instead.
+ */
+export const STORE_MAP_QUERY =
+  import.meta.env.VITE_STORE_MAP_QUERY || 'Balkumari Chowk, Balkumari, Lalitpur, Nepal';
+
+export const STORE_MAP_EMBED_URL =
+  import.meta.env.VITE_STORE_MAP_EMBED_URL ||
+  `https://maps.google.com/maps?q=${encodeURIComponent(STORE_MAP_QUERY)}&z=16&output=embed`;
+
+/** Opens the same place in the Maps app, where directions actually work. */
+export const STORE_MAP_LINK = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+  STORE_MAP_QUERY
+)}`;
+
+export const STORE_DIRECTIONS_LINK = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+  STORE_MAP_QUERY
+)}`;
 
 /**
  * Landing-page hero photograph. Leave unset and the best-rated product's image

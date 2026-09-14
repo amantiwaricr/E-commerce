@@ -125,6 +125,20 @@ cp client/.env.example client/.env
 
 `VITE_API_URL` must point at the API (`http://localhost:5000/api` in development).
 
+The landing page also shows where the shop is. Set these to your own address —
+they default to Balkumari, Lalitpur:
+
+| Variable | What it is |
+|---|---|
+| `VITE_STORE_ADDRESS_LINE1` / `_LINE2` | Street and city lines, shown on the landing page and in its footer |
+| `VITE_STORE_HOURS` | Opening hours line |
+| `VITE_SUPPORT_PHONE`, `VITE_SUPPORT_EMAIL` | Contact details |
+| `VITE_STORE_MAP_QUERY` | What the embedded map and both directions links point at |
+| `VITE_STORE_MAP_EMBED_URL` | Optional. Leave blank and the map is embedded keyless through `maps.google.com/maps?output=embed`, which needs **no API key and no billing account**. Set it to a full [Maps Embed API](https://developers.google.com/maps/documentation/embed/get-started) URL if you want a keyed, styled map |
+
+The map sits in a panel captioned with the address and a Google Maps link, so a
+browser that blocks third-party frames still shows customers where to go.
+
 > Everything in `client/.env` is compiled into the browser bundle. Never put a secret there.
 
 ---

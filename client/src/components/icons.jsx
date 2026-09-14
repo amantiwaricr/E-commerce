@@ -81,6 +81,30 @@ export const PinIcon = (p) => (
   </svg>
 );
 
+export const MailIcon = (p) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m3.5 7 8.5 6 8.5-6" />
+  </svg>
+);
+
+export const ClockIcon = (p) => (
+  <svg {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.2 2" /></svg>
+);
+
+export const RouteIcon = (p) => (
+  <svg {...base} {...p}>
+    <circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="6" r="2.5" />
+    <path d="M8.5 18h6a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7h6" />
+  </svg>
+);
+
+export const WalletIcon = (p) => (
+  <svg {...base} {...p}>
+    <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18v3" />
+    <rect x="3" y="7.5" width="18" height="12.5" rx="2.5" /><path d="M16.5 14h1.5" />
+  </svg>
+);
+
 export const GridIcon = (p) => (
   <svg {...base} strokeWidth={2.4} {...p}>
     <circle cx="8" cy="8" r=".6" /><circle cx="12" cy="8" r=".6" /><circle cx="16" cy="8" r=".6" />

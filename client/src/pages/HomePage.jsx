@@ -3,19 +3,58 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Emblem from '../components/Emblem';
 import {
-  ArrowRight, CartIcon, FarmIcon, GridIcon, LeafIcon, PhoneIcon,
-  PinIcon, SearchIcon, ShieldIcon, SnowIcon, StarIcon, UserIcon,
+  ArrowRight, BoxIcon, CartIcon, ClockIcon, FarmIcon, GridIcon, LeafIcon,
+  MailIcon, PhoneIcon, PinIcon, RouteIcon, SearchIcon, ShieldIcon, SnowIcon,
+  StarIcon, UserIcon, WalletIcon,
 } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { formatNpr } from '../utils/format';
-import { CATEGORIES, HERO_IMAGE, STORE_NAME, SUPPORT_PHONE } from '../config';
+import {
+  CATEGORIES, FREE_DELIVERY_THRESHOLD, HERO_IMAGE, STORE_ADDRESS, STORE_DIRECTIONS_LINK,
+  STORE_MAP_EMBED_URL, STORE_MAP_LINK, STORE_NAME, SUPPORT_EMAIL, SUPPORT_PHONE,
+} from '../config';
 
 /** Marketing copy for the hero badges — edit these to match the business. */
 const PROMISES = [
   { Icon: FarmIcon, title: 'Cut To Order', note: 'Same morning' },
   { Icon: SnowIcon, title: 'Cold Chain', note: 'Never re-frozen' },
   { Icon: ShieldIcon, title: 'Halal Certified', note: '100% Halal' },
+];
+
+/** Footer link columns — every destination is a route that actually exists. */
+const FOOTER_LINKS = [
+  {
+    title: 'Shop',
+    links: [
+      { label: 'Meat Market', to: '/shop' },
+      ...CATEGORIES.map((name) => ({ label: name, to: `/shop?category=${encodeURIComponent(name)}` })),
+    ],
+  },
+  {
+    title: 'Your account',
+    links: [
+      { label: 'Orders & tracking', to: '/orders' },
+      { label: 'Favourites', to: '/favourites' },
+      { label: 'Basket', to: '/cart' },
+      { label: 'Profile', to: '/profile' },
+    ],
+  },
+  {
+    title: 'Ordering',
+    links: [
+      { label: 'How it works', to: '#how', hash: true },
+      { label: 'Create an account', to: '/register' },
+      { label: 'Sign in', to: '/login' },
+      { label: 'Visit the shop', to: '#visit', hash: true },
+    ],
+  },
+];
+
+const PAYMENT_NOTES = [
+  { Icon: WalletIcon, label: 'eSewa wallet' },
+  { Icon: ShieldIcon, label: 'Debit / credit card' },
+  { Icon: BoxIcon, label: 'Cash on delivery' },
 ];
 
 const STEPS = [
@@ -291,12 +330,167 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="home-section" id="visit">
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <h2>Visit the <em>counter</em></h2>
+              <p>Pick up in store with no delivery charge, or come and choose your cut at the block.</p>
+            </div>
+          </div>
+
+          <div className="visit">
+            <div className="visit-info">
+              <div className="visit-line">
+                <span className="ico"><PinIcon width={17} height={17} /></span>
+                <div>
+                  <h3>Our shop</h3>
+                  <p>
+                    {STORE_ADDRESS.line1}
+                    <br />
+                    {STORE_ADDRESS.line2}
+                  </p>
+                </div>
+              </div>
+
+              <div className="visit-line">
+                <span className="ico"><ClockIcon width={17} height={17} /></span>
+                <div>
+                  <h3>Opening hours</h3>
+                  <p>{STORE_ADDRESS.hours}</p>
+                </div>
+              </div>
+
+              <div className="visit-line">
+                <span className="ico"><PhoneIcon width={17} height={17} /></span>
+                <div>
+                  <h3>Talk to us</h3>
+                  <p>
+                    <a href={`tel:${SUPPORT_PHONE.replace(/[^+\d]/g, '')}`}>{SUPPORT_PHONE}</a>
+                    <br />
+                    <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+                  </p>
+                </div>
+              </div>
+
+              <div className="visit-actions">
+                <a className="cta-pill" href={STORE_DIRECTIONS_LINK} target="_blank" rel="noreferrer">
+                  Get directions
+                  <RouteIcon width={18} height={18} />
+                </a>
+                <a className="ghost-pill" href={STORE_MAP_LINK} target="_blank" rel="noreferrer">
+                  Open in Google Maps
+                </a>
+              </div>
+            </div>
+
+            <div className="visit-map">
+              {/*
+                Keyless Google Maps embed — no API key, no billing account
+                needed. The caption below it is always rendered rather than
+                shown on failure: a blocked frame fires `load` for the browser's
+                own error page, so there is no reliable way to detect one, and
+                this way the panel is never left without an address.
+              */}
+              <iframe
+                src={STORE_MAP_EMBED_URL}
+                title={`${STORE_NAME} on Google Maps — ${STORE_ADDRESS.line1}`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+
+              <div className="map-caption">
+                <PinIcon width={15} height={15} />
+                <span>
+                  {STORE_ADDRESS.line1}, {STORE_ADDRESS.line2}
+                </span>
+                <a href={STORE_MAP_LINK} target="_blank" rel="noreferrer">
+                  Open in Google Maps
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer className="home-footer">
-        <div className="wrap cols">
-          <span>© {new Date().getFullYear()} {STORE_NAME} · Kathmandu, Nepal</span>
-          <span>
-            <Link to="/shop">Meat Market</Link> · <Link to="/orders">Track an order</Link> · {SUPPORT_PHONE}
-          </span>
+        <div className="wrap">
+          <div className="foot-top">
+            <div className="foot-brand">
+              <div className="home-brand">
+                <Emblem className="emblem" />
+                <div>
+                  <div className="word">{STORE_NAME}</div>
+                  <span className="sub">FRESH · HALAL · NEPAL</span>
+                </div>
+              </div>
+              <p>
+                Meat cut to order the morning you buy it, kept in an unbroken cold chain from our
+                Balkumari counter to your kitchen anywhere in the Kathmandu Valley.
+              </p>
+
+              <div className="foot-contact">
+                <a href={STORE_MAP_LINK} target="_blank" rel="noreferrer">
+                  <PinIcon width={15} height={15} />
+                  {STORE_ADDRESS.line1}, {STORE_ADDRESS.line2}
+                </a>
+                <a href={`tel:${SUPPORT_PHONE.replace(/[^+\d]/g, '')}`}>
+                  <PhoneIcon width={15} height={15} />
+                  {SUPPORT_PHONE}
+                </a>
+                <a href={`mailto:${SUPPORT_EMAIL}`}>
+                  <MailIcon width={15} height={15} />
+                  {SUPPORT_EMAIL}
+                </a>
+                <span>
+                  <ClockIcon width={15} height={15} />
+                  {STORE_ADDRESS.hours}
+                </span>
+              </div>
+            </div>
+
+            {FOOTER_LINKS.map((column) => (
+              <nav className="foot-col" key={column.title} aria-label={column.title}>
+                <h4>{column.title}</h4>
+                <ul>
+                  {column.links.map((link) => (
+                    <li key={`${column.title}-${link.label}`}>
+                      {link.hash ? (
+                        <a href={link.to}>{link.label}</a>
+                      ) : (
+                        <Link to={link.to}>{link.label}</Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
+          </div>
+
+          <div className="foot-pay">
+            <span className="foot-pay-label">We accept</span>
+            {PAYMENT_NOTES.map(({ Icon, label }) => (
+              <span className="pay-chip" key={label}>
+                <Icon width={15} height={15} />
+                {label}
+              </span>
+            ))}
+            <span className="foot-pay-note">
+              Free delivery inside the Valley over {formatNpr(FREE_DELIVERY_THRESHOLD)} · Order before
+              4 PM for same-day delivery
+            </span>
+          </div>
+
+          <div className="foot-bottom">
+            <span>
+              © {new Date().getFullYear()} {STORE_NAME}. All rights reserved.
+            </span>
+            <span>
+              Registered in Lalitpur, Bagmati Province, Nepal · Prices in Nepalese rupees, inclusive
+              of applicable taxes
+            </span>
+          </div>
         </div>
       </footer>
     </div>
