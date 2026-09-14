@@ -63,11 +63,11 @@ export default function PriceRangeFilter({ bounds, average, histogram = [], valu
       <svg className="histogram" viewBox="0 0 220 52" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="priceFade" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8f75ff" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#8f75ff" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="#8cc63f" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#8cc63f" stopOpacity="0.05" />
           </linearGradient>
         </defs>
-        <path d={path} fill="url(#priceFade)" stroke="#8f75ff" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d={path} fill="url(#priceFade)" stroke="#8cc63f" strokeWidth="1.2" strokeLinejoin="round" />
       </svg>
 
       <div className="range-wrap">
