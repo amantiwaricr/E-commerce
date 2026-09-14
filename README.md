@@ -19,13 +19,18 @@ WhatsApp order notifications.
 │   │   └── utils/           order numbers, money, phone, sanitising, logging
 │   ├── tests/       Jest + supertest suites
 │   └── .env.example
-└── client/          React 18 + Vite SPA (storefront + admin panel)
+├── client/          React 18 + Vite storefront (:5173)
+│   ├── src/
+│   │   ├── api/             axios instance with auth + error normalising
+│   │   ├── components/      navbar, product card, timeline, route guards, toasts
+│   │   ├── context/         Auth, Cart, Toast providers
+│   │   └── pages/           storefront pages
+│   └── .env.example
+└── admin/           React 18 + Vite admin console (:5174)
     ├── src/
-    │   ├── api/             axios instance with auth + error normalising
-    │   ├── components/      navbar, product card, timeline, route guards, toasts
-    │   ├── context/         Auth, Cart, Toast providers
-    │   ├── pages/           storefront pages
-    │   └── pages/admin/     admin dashboard, products, orders, customers
+    │   ├── charts/          hand-rolled SVG gauge, line, bar and heat grid
+    │   ├── components/      layout, cards, icons, tables, route guards
+    │   └── pages/           dashboard, products, orders, customers
     └── .env.example
 ```
 
@@ -106,7 +111,6 @@ Then edit `server/.env`:
 |---|---|
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/fresh-meat-nepal`, or your Atlas connection string |
 | `JWT_SECRET` | A long random string — generate with `openssl rand -hex 48` |
-| `GOOGLE_CLIENT_ID` | OAuth client ID from step 4 |
 | `FRONTEND_URL` / `BACKEND_URL` | Public URLs; used for CORS, eSewa callbacks and tracking links |
 | `ESEWA_*` | Payment settings — see step 5 |
 | `SMTP_*`, `MAIL_FROM_*` | Order confirmation emails — see step 6 |
@@ -119,8 +123,7 @@ Then edit `server/.env`:
 cp client/.env.example client/.env
 ```
 
-`VITE_GOOGLE_CLIENT_ID` **must** be the same client ID as the server's `GOOGLE_CLIENT_ID`,
-and `VITE_API_URL` must point at the API (`http://localhost:5000/api` in development).
+`VITE_API_URL` must point at the API (`http://localhost:5000/api` in development).
 
 > Everything in `client/.env` is compiled into the browser bundle. Never put a secret there.
 
@@ -366,8 +369,7 @@ NODE_ENV=production npm start     # serves the API
 ```
 
 Deploy `client/dist` as static files (Netlify, Vercel, nginx, S3+CloudFront) and the API as a
-Node service. In production the server refuses to boot without `JWT_SECRET`, `GOOGLE_CLIENT_ID`
-and `MONGODB_URI`. Terminate TLS in front of the API, and for a cross-site deployment (SPA and
+Node service. In production the server refuses to boot without `JWT_SECRET` and `MONGODB_URI`. Terminate TLS in front of the API, and for a cross-site deployment (SPA and
 API on different domains) set:
 
 ```env
@@ -377,6 +379,38 @@ COOKIE_SECURE=true
 
 Because the SPA uses client-side routing, configure your static host to rewrite unknown paths
 to `index.html`.
+
+### The admin console
+
+`http://localhost:5174` — a separate app with its own session, so a customer
+signing in on the shop can never reach it (see §4).
+
+The dashboard reads `/api/admin/analytics`, and every figure on it is measured
+from real orders — nothing is sample data:
+
+| Card | What it shows |
+|---|---|
+| **Channel performance** | Revenue split by how the order was paid for (eSewa / card / cash), each with its share and its change against the previous period |
+| **Revenue by month** | Twelve months of turnover for the selected year, against a target derived from the trailing three-month average plus a 10% growth goal. Hover a month for the exact figures |
+| **Top products** | Best sellers by units moved in the selected period |
+| **When orders arrive** | Order volume as a weekday × time-slot grid over the last 90 days, so you can staff the counter for the rush. Read in Kathmandu time, not UTC |
+| **Recent activity** | The latest orders leaving and what is currently in stock |
+| **Needs restocking** | Anything available and down to 5 units or fewer, with one-click restocking |
+
+The period control (Daily / Weekly / Monthly / Yearly) sets a rolling window;
+every "vs previous period" delta compares it with the window of equal length
+immediately before it.
+
+Elsewhere in the console:
+
+- **Search** in the top bar jumps straight to an order when you paste an order
+  number (`FMN-2026-00184`), and searches products otherwise.
+- **Stock** is editable directly in the products table — type a new figure and
+  click away.
+- **Export CSV** on the orders page downloads whatever the current filters
+  match, up to 5,000 orders.
+- The **bell** and the sidebar tallies count pending orders and low stock, and
+  refresh every two minutes.
 
 ---
 
@@ -489,12 +523,15 @@ Every response is JSON. Errors come back as
 ### Admin (`role: "admin"` required)
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/admin/stats` | Dashboard metrics |
+| GET | `/api/admin/stats` | Headline metrics (today, pending, lifetime, low stock) |
+| GET | `/api/admin/analytics` | Everything the dashboard charts read. `period` = `daily`\|`weekly`\|`monthly`\|`yearly`, `year` picks the revenue series |
 | GET/POST | `/api/admin/products` | List (incl. hidden) / create |
 | GET/PATCH/DELETE | `/api/admin/products/:id` | Read / update / delete |
 | PATCH | `/api/admin/products/:id/availability` | Publish or hide |
+| PATCH | `/api/admin/products/:id/stock` | Set `stock` outright, or nudge it by a `delta` |
 | POST | `/api/admin/uploads` | Upload up to 8 product images |
 | GET | `/api/admin/orders` | Filter by status, payment, date, order number |
+| GET | `/api/admin/orders/export` | The current filter set as a CSV download |
 | GET | `/api/admin/orders/:orderNumber` | Order detail with customer |
 | PATCH | `/api/admin/orders/:orderNumber/status` | Advance the status (notifies the customer) |
 | PATCH | `/api/admin/orders/:orderNumber/tracking` | Carrier, code, ETA, timeline note |

@@ -1,20 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import Loader from '../components/Loader';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
 import { useToast } from '../context/ToastContext';
 import { formatNpr } from '../utils/format';
 import { CATEGORIES } from '../config';
 
 export default function ProductsPage() {
   const toast = useToast();
+  const [params] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1 });
-  const [filters, setFilters] = useState({ page: 1, category: '', availability: '', search: '' });
+  const [filters, setFilters] = useState({
+    page: 1,
+    category: '',
+    availability: params.get('availability') || '',
+    // Seeded from the topbar search so a query from any page lands here.
+    search: params.get('search') || '',
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [draftStock, setDraftStock] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -35,10 +44,34 @@ export default function ProductsPage() {
     load();
   }, [load]);
 
+  // A fresh search from the topbar arrives as a URL change, not a remount.
+  const urlSearch = params.get('search') || '';
+  useEffect(() => {
+    setFilters((f) => (f.search === urlSearch ? f : { ...f, search: urlSearch, page: 1 }));
+  }, [urlSearch]);
+
   const toggleAvailability = async (product) => {
     try {
       await api.patch(`/admin/products/${product._id}/availability`, { isAvailable: !product.isAvailable });
       toast.success(`${product.name} is now ${product.isAvailable ? 'hidden' : 'published'}.`);
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  /** Saves a stock level edited straight in the table. */
+  const saveStock = async (product) => {
+    const next = Number(draftStock[product._id]);
+    setDraftStock((current) => {
+      const { [product._id]: _removed, ...rest } = current;
+      return rest;
+    });
+    if (!Number.isFinite(next) || next < 0 || next === product.stock) return;
+
+    try {
+      await api.patch(`/admin/products/${product._id}/stock`, { stock: next });
+      toast.success(`${product.name} stock set to ${next} ${product.unit}.`);
       load();
     } catch (err) {
       toast.error(err.message);
@@ -59,9 +92,12 @@ export default function ProductsPage() {
   return (
     <>
       <div className="page-head">
-        <h1>Products</h1>
+        <div>
+          <h1>Products</h1>
+          <div className="sub">Edit a stock figure straight in the table — it saves when you leave the box.</div>
+        </div>
         <Link className="btn" to="/products/new">
-          Add product
+          <Icon name="plus" size={15} /> Add product
         </Link>
       </div>
 
@@ -128,14 +164,8 @@ export default function ProductsPage() {
                 {products.map((product) => (
                   <tr key={product._id}>
                     <td>
-                      <div className="row" style={{ flexWrap: 'nowrap' }}>
-                        {product.images?.[0] && (
-                          <img
-                            src={product.images[0]}
-                            alt=""
-                            style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }}
-                          />
-                        )}
+                      <div className="cell-product">
+                        {product.images?.[0] && <img src={product.images[0]} alt="" />}
                         <div>
                           <strong>{product.name}</strong>
                           <div className="small muted">/{product.slug}</div>
@@ -148,8 +178,19 @@ export default function ProductsPage() {
                       <span className="small muted"> / {product.unit}</span>
                     </td>
                     <td>
-                      <span className={`badge ${product.stock <= 5 ? 'warn' : ''}`}>
-                        {product.stock} {product.unit}
+                      <span className="stock-edit">
+                        <input
+                          type="number"
+                          min="0"
+                          aria-label={`Stock for ${product.name}`}
+                          value={draftStock[product._id] ?? product.stock}
+                          onChange={(e) => setDraftStock((d) => ({ ...d, [product._id]: e.target.value }))}
+                          onBlur={() => saveStock(product)}
+                          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                        />
+                        <span className={`badge ${product.stock === 0 ? 'danger' : product.stock <= 5 ? 'warn' : ''}`}>
+                          {product.unit}
+                        </span>
                       </span>
                     </td>
                     <td>
@@ -165,7 +206,7 @@ export default function ProductsPage() {
                         <button type="button" className="btn secondary sm" onClick={() => toggleAvailability(product)}>
                           {product.isAvailable ? 'Hide' : 'Publish'}
                         </button>
-                        <button type="button" className="btn danger sm" onClick={() => remove(product)}>
+                        <button type="button" className="btn quiet-danger sm" onClick={() => remove(product)}>
                           Delete
                         </button>
                       </div>

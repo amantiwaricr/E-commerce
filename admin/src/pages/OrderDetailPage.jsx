@@ -96,7 +96,7 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      <div className="checkout-grid">
+      <div className="detail-grid">
         <div className="stack">
           <section className="panel">
             <h3>Advance this order</h3>

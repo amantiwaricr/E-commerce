@@ -14,6 +14,7 @@ const router = express.Router();
 router.use(requireAuth, requireAdmin);
 
 router.get('/stats', adminController.getDashboardStats);
+router.get('/analytics', adminController.getAnalytics);
 
 // Products
 router.get('/products', validate(validators.listProducts), productController.adminListProducts);
@@ -21,10 +22,13 @@ router.post('/products', validate(validators.productBody(false)), productControl
 router.get('/products/:id', validate([validators.objectId('id')]), productController.adminGetProduct);
 router.patch('/products/:id', validate([validators.objectId('id'), ...validators.productBody(true)]), productController.updateProduct);
 router.patch('/products/:id/availability', validate([validators.objectId('id')]), productController.toggleAvailability);
+router.patch('/products/:id/stock', validate(validators.adjustStock), adminController.adjustStock);
 router.delete('/products/:id', validate([validators.objectId('id')]), productController.deleteProduct);
 
 // Orders
 router.get('/orders', adminController.listOrders);
+// Must precede /orders/:orderNumber so "export" is not read as an order number.
+router.get('/orders/export', adminController.exportOrders);
 router.get('/orders/:orderNumber', validate(validators.orderNumberParam), adminController.getOrder);
 router.patch('/orders/:orderNumber/status', validate(validators.updateOrderStatus), adminController.updateOrderStatus);
 router.patch('/orders/:orderNumber/tracking', validate(validators.updateTracking), adminController.updateTracking);

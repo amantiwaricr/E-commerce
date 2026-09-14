@@ -6,8 +6,8 @@
  *   npm run seed              # upsert products + admin
  *   npm run seed -- --fresh   # wipe products first
  *
- * The admin is created without a googleId placeholder collision: the account is
- * matched by email on first Google sign-in and linked automatically.
+ * The admin is matched by email, so re-seeding updates the existing record
+ * rather than creating a second administrator.
  */
 
 const crypto = require('crypto');

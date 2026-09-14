@@ -164,5 +164,11 @@ module.exports = {
     body('note').optional().trim().isLength({ max: 500 }),
   ],
 
+  adjustStock: [
+    objectId('id'),
+    body('stock').optional().isInt({ min: 0, max: 100000 }).withMessage('Stock must be 0 or more'),
+    body('delta').optional().isInt({ min: -100000, max: 100000 }).withMessage('Delta must be a whole number'),
+  ],
+
   verifyPayment: [body('data').isString().notEmpty().withMessage('Payment data is required')],
 };

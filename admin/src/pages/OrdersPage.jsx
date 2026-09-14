@@ -5,11 +5,15 @@ import Loader from '../components/Loader';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
+import Icon from '../components/Icon';
+import { useToast } from '../context/ToastContext';
 import { formatDate, formatNpr } from '../utils/format';
 import { ORDER_STATUSES, PAYMENT_METHOD_LABELS } from '../config';
 
 export default function OrdersPage() {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [exporting, setExporting] = useState(false);
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
@@ -58,11 +62,42 @@ export default function OrdersPage() {
     load();
   }, [load]);
 
+  /**
+   * Downloads the current filter set as CSV. The endpoint is behind the admin
+   * bearer token, so the file is fetched as a blob rather than linked to.
+   */
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([key, value]) => key !== 'page' && value !== '' && value != null)
+      );
+      const { data } = await api.get('/admin/orders/export', { params, responseType: 'blob' });
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <div className="page-head">
-        <h1>Orders</h1>
-        <span className="muted small">{pagination.total ?? 0} matching orders</span>
+        <div>
+          <h1>Orders</h1>
+          <div className="sub">{pagination.total ?? 0} orders match the current filters.</div>
+        </div>
+        <button type="button" className="btn secondary" onClick={exportCsv} disabled={exporting || !orders.length}>
+          <Icon name="download" size={15} /> {exporting ? 'Preparing…' : 'Export CSV'}
+        </button>
       </div>
 
       <div className="filter-bar">

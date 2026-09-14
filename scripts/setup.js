@@ -7,9 +7,9 @@
  *   npm run setup
  *   npm run setup -- --admin-email=me@gmail.com --admin-password=secret123 --port=5001
  *
- * Creates server/.env and client/.env from their examples if missing, then
- * writes the handful of values that cannot be defaulted — keeping the Google
- * client ID identical on both sides, which is the easiest thing to get wrong.
+ * Creates server/.env, client/.env and admin/.env from their examples if
+ * missing, then writes the handful of values that cannot be defaulted — keeping
+ * the API port identical across all three, which is the easiest thing to get wrong.
  */
 
 const fs = require('fs');

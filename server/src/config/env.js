@@ -59,12 +59,6 @@ const env = {
 
   mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fresh-meat-nepal',
 
-  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
-  // The value in `.env.example` is a placeholder — accepting it would send an
-  // unusable client ID to Google and surface as a confusing 401 in the browser.
-  googleConfigured:
-    (process.env.GOOGLE_CLIENT_ID || '').endsWith('.apps.googleusercontent.com') &&
-    !(process.env.GOOGLE_CLIENT_ID || '').startsWith('your-'),
   jwtSecret: process.env.JWT_SECRET || (isProduction ? '' : 'dev-only-insecure-secret'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   cookie: {
@@ -140,7 +134,6 @@ const validateEnv = () => {
   if (!env.isProduction) return;
   const missing = [];
   if (!env.jwtSecret || env.jwtSecret === 'dev-only-insecure-secret') missing.push('JWT_SECRET');
-  if (!env.googleConfigured) missing.push('GOOGLE_CLIENT_ID');
   if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
   if (missing.length) {
     throw new Error(`Missing required environment variables in production: ${missing.join(', ')}`);

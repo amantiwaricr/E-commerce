@@ -3,7 +3,6 @@
 // Deterministic configuration for every suite. Set before any module reads env.
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret-value-for-suites';
-process.env.GOOGLE_CLIENT_ID = 'test-google-client-id.apps.googleusercontent.com';
 process.env.FRONTEND_URL = 'http://localhost:5173';
 process.env.BACKEND_URL = 'http://localhost:5000';
 process.env.ESEWA_MODE = 'sandbox';
