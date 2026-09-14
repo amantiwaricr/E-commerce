@@ -20,7 +20,7 @@ const BLANK_ADDRESS = {
 };
 
 export default function CheckoutPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { cart, refreshCart, deliveryMethod } = useCart();
   const toast = useToast();
   const navigate = useNavigate();
@@ -32,20 +32,42 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Prefill from the profile, and offer the customer's most recent saved address.
-  useEffect(() => {
-    if (!user) return;
-    const saved = user.addresses?.[0];
+  const savedAddresses = user?.addresses || [];
+  // -1 means "enter a new address"; 0 is the most recently used one.
+  const [selected, setSelected] = useState(savedAddresses.length ? 0 : -1);
+
+  const applySaved = (saved) =>
     setAddress((current) => ({
       ...current,
-      recipientName: saved?.recipientName || user.name || '',
-      phone: saved?.phone || user.phone || '',
+      recipientName: saved?.recipientName || user?.name || '',
+      phone: saved?.phone || user?.phone || '',
       street: saved?.street || '',
-      city: saved?.city || current.city,
-      district: saved?.district || current.district,
+      city: saved?.city || 'Kathmandu',
+      district: saved?.district || 'Bagmati',
       landmark: saved?.landmark || '',
     }));
+
+  // Prefill with the address this customer used last.
+  useEffect(() => {
+    if (!user) return;
+    if (savedAddresses.length) {
+      setSelected(0);
+      applySaved(savedAddresses[0]);
+    } else {
+      setAddress((current) => ({
+        ...current,
+        recipientName: user.name || '',
+        phone: user.phone || '',
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const chooseAddress = (index) => {
+    setSelected(index);
+    if (index >= 0) applySaved(savedAddresses[index]);
+    else setAddress({ ...BLANK_ADDRESS, recipientName: user?.name || '', phone: user?.phone || '' });
+  };
 
   useEffect(() => {
     api
@@ -76,6 +98,8 @@ export default function CheckoutPage() {
       }
 
       await refreshCart();
+      // The order saved this address; pick it up so the next checkout is filled in.
+      refreshUser();
       toast.success(`Order ${data.order.orderNumber} placed! Check your email for the confirmation.`);
       navigate(`/orders/${data.order.orderNumber}`, { replace: true });
     } catch (err) {
@@ -111,6 +135,38 @@ export default function CheckoutPage() {
         <div className="stack">
           <section className="panel">
             <h3>{deliveryMethod === 'pickup' ? 'Contact details for pick-up' : 'Delivery address'}</h3>
+
+            {savedAddresses.length > 0 && (
+              <div className="saved-addresses">
+                {savedAddresses.map((saved, index) => (
+                  <button
+                    type="button"
+                    key={`${saved.street}-${index}`}
+                    className={`saved-address ${selected === index ? 'on' : ''}`}
+                    onClick={() => chooseAddress(index)}
+                  >
+                    <span className="tickdot" aria-hidden="true" />
+                    <span style={{ minWidth: 0 }}>
+                      <strong className="truncate" style={{ display: 'block' }}>{saved.street}</strong>
+                      <span className="small muted">
+                        {saved.city}
+                        {saved.district ? `, ${saved.district}` : ''} · {saved.phone}
+                      </span>
+                    </span>
+                    {index === 0 && <span className="badge info">Default</span>}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  className={`saved-address ${selected === -1 ? 'on' : ''}`}
+                  onClick={() => chooseAddress(-1)}
+                >
+                  <span className="tickdot" aria-hidden="true" />
+                  <span>Use a different address</span>
+                </button>
+              </div>
+            )}
 
             <div className="field-row">
               <div className="field">

@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from './Logo';
 import { BoxIcon, CartIcon, HeartIcon, SearchIcon } from './icons';
+import AccountMenu from './AccountMenu';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
 
 export default function TopBar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { itemCount } = useCart();
   const { ids } = useFavourites();
   const navigate = useNavigate();
@@ -61,21 +62,7 @@ export default function TopBar() {
         </NavLink>
 
         {isAuthenticated ? (
-          <button
-            type="button"
-            className="avatar-btn"
-            title={`${user.name} — sign out`}
-            onClick={async () => {
-              await logout();
-              navigate('/');
-            }}
-          >
-            {user.avatar ? (
-              <img className="avatar" src={user.avatar} alt="" />
-            ) : (
-              <span className="avatar-fallback">{user.name.charAt(0).toUpperCase()}</span>
-            )}
-          </button>
+          <AccountMenu />
         ) : (
           <Link className="btn sm" to="/login" style={{ marginLeft: 6 }}>
             Sign in

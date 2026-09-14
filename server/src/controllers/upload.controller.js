@@ -32,6 +32,36 @@ const uploadMiddleware = multer({
   },
 }).array('images', 8);
 
+/** Customers may upload a single, smaller profile photo. */
+const avatarMiddleware = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME.has(file.mimetype)) {
+      return cb(ApiError.badRequest('Only JPEG, PNG, WebP, or AVIF images are allowed'));
+    }
+    return cb(null, true);
+  },
+}).single('avatar');
+
+/** POST /api/auth/me/avatar — sets the signed-in customer's profile photo. */
+const uploadAvatar = (req, res, next) =>
+  avatarMiddleware(req, res, async (err) => {
+    if (err) {
+      const tooBig = err.code === 'LIMIT_FILE_SIZE';
+      return next(err instanceof ApiError ? err : ApiError.badRequest(tooBig ? 'Images must be 2 MB or smaller' : err.message));
+    }
+    if (!req.file) return next(ApiError.badRequest('No image was uploaded'));
+
+    try {
+      req.user.avatar = `${env.backendUrl}/uploads/${req.file.filename}`;
+      await req.user.save();
+      return res.json({ success: true, user: req.user.toPublicJSON() });
+    } catch (saveError) {
+      return next(saveError);
+    }
+  });
+
 /** POST /api/admin/uploads — returns absolute URLs for the stored files. */
 const uploadImages = (req, res, next) =>
   uploadMiddleware(req, res, (err) => {
@@ -43,4 +73,4 @@ const uploadImages = (req, res, next) =>
     });
   });
 
-module.exports = { uploadImages, UPLOAD_DIR };
+module.exports = { uploadImages, uploadAvatar, UPLOAD_DIR };

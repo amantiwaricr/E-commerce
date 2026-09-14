@@ -63,6 +63,32 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  /** Re-reads the account — used after an order saves a new address. */
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data } = await api.get('/auth/me');
+      setUser(data.user);
+      return data.user;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const uploadAvatar = useCallback(async (file) => {
+    const body = new FormData();
+    body.append('avatar', file);
+    const { data } = await api.post('/auth/me/avatar', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    setUser(data.user);
+    return data.user;
+  }, []);
+
+  const changePassword = useCallback(
+    (currentPassword, newPassword) => api.post('/auth/change-password', { currentPassword, newPassword }),
+    []
+  );
+
   const updateProfile = useCallback(async (payload) => {
     const { data } = await api.patch('/auth/me', payload);
     setUser(data.user);
@@ -83,8 +109,14 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       updateProfile,
+      refreshUser,
+      uploadAvatar,
+      changePassword,
     }),
-    [user, loading, register, verifyEmail, resendCode, login, logout, updateProfile]
+    [
+      user, loading, register, verifyEmail, resendCode, login, logout,
+      updateProfile, refreshUser, uploadAvatar, changePassword,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

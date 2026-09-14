@@ -79,6 +79,75 @@ describeWithDb('Storefront catalogue filters and facets', () => {
   });
 });
 
+describeWithDb('Checkout remembers the delivery address', () => {
+  const Product = require('../src/models/Product');
+  const User = require('../src/models/User');
+  const { shippingAddress } = require('./helpers/factories');
+  let app;
+  let customer;
+  let product;
+
+  beforeAll(async () => {
+    await connect();
+    app = createApp();
+  });
+  beforeEach(async () => {
+    customer = await createUser();
+    product = await createProduct({ price: 600, stock: 10 });
+  });
+  afterEach(async () => clear());
+  afterAll(async () => disconnect());
+
+  const order = async (address) => {
+    await request(app)
+      .post('/api/cart/items')
+      .set(authHeader(customer))
+      .send({ productId: product._id.toString(), quantity: 1 });
+
+    return request(app)
+      .post('/api/orders')
+      .set(authHeader(customer))
+      .send({ paymentMethod: 'cod', shippingAddress: address });
+  };
+
+  it('saves the address used at checkout to the account', async () => {
+    expect(customer.addresses).toHaveLength(0);
+
+    const res = await order(shippingAddress({ street: 'Jhamsikhel Road 12' }));
+    expect(res.status).toBe(201);
+
+    const stored = await User.findById(customer._id);
+    expect(stored.addresses).toHaveLength(1);
+    expect(stored.addresses[0].street).toBe('Jhamsikhel Road 12');
+    expect(stored.addresses[0].phone).toBe('9801234567');
+  });
+
+  it('does not duplicate the address when the same one is used again', async () => {
+    await order(shippingAddress({ street: 'Jhamsikhel Road 12' }));
+    await Product.updateOne({ _id: product._id }, { $set: { stock: 10 } });
+    await order(shippingAddress({ street: 'Jhamsikhel Road 12' }));
+
+    const stored = await User.findById(customer._id);
+    expect(stored.addresses).toHaveLength(1);
+  });
+
+  it('puts the most recently used address first', async () => {
+    await order(shippingAddress({ street: 'Jhamsikhel Road 12' }));
+    await Product.updateOne({ _id: product._id }, { $set: { stock: 10 } });
+    await order(shippingAddress({ street: 'Pulchowk 4' }));
+
+    const stored = await User.findById(customer._id);
+    expect(stored.addresses.map((a) => a.street)).toEqual(['Pulchowk 4', 'Jhamsikhel Road 12']);
+  });
+
+  it('returns the saved addresses on the account, ready to prefill checkout', async () => {
+    await order(shippingAddress({ street: 'Jhamsikhel Road 12' }));
+
+    const me = await request(app).get('/api/auth/me').set(authHeader(customer));
+    expect(me.body.user.addresses[0].street).toBe('Jhamsikhel Road 12');
+  });
+});
+
 describeWithDb('Favourites', () => {
   let app;
   let customer;

@@ -176,3 +176,59 @@ describe('Placeholder detection', () => {
     expect(configured('smtp.gmail.com', 'your-gmail-address@gmail.com', 'a-real-password')).toBe(false);
   });
 });
+
+describe('Remembering a delivery address', () => {
+  const User = require('../src/models/User');
+  const make = () => new User({ name: 'A', email: 'a@b.com', passwordHash: 'x' });
+  const address = (street, over = {}) => ({
+    recipientName: 'Sita Sharma',
+    phone: '9801234567',
+    street,
+    city: 'Lalitpur',
+    ...over,
+  });
+
+  it('keeps the most recently used address first', () => {
+    const user = make();
+    user.rememberAddress(address('Jhamsikhel Road 12'));
+    user.rememberAddress(address('Pulchowk 4'));
+
+    expect(user.addresses.map((a) => a.street)).toEqual(['Pulchowk 4', 'Jhamsikhel Road 12']);
+  });
+
+  it('moves a re-used address back to the front instead of duplicating it', () => {
+    const user = make();
+    user.rememberAddress(address('Jhamsikhel Road 12'));
+    user.rememberAddress(address('Pulchowk 4'));
+    // Same place, typed with different spacing and case.
+    user.rememberAddress(address('  jhamsikhel road 12  '));
+
+    expect(user.addresses).toHaveLength(2);
+    expect(user.addresses[0].street.trim().toLowerCase()).toBe('jhamsikhel road 12');
+  });
+
+  it('treats a different phone or city as a different address', () => {
+    const user = make();
+    user.rememberAddress(address('Pulchowk 4'));
+    user.rememberAddress(address('Pulchowk 4', { phone: '9841000000' }));
+    user.rememberAddress(address('Pulchowk 4', { city: 'Kathmandu' }));
+
+    expect(user.addresses).toHaveLength(3);
+  });
+
+  it('caps the list so it cannot grow without bound', () => {
+    const user = make();
+    for (let i = 0; i < 12; i += 1) user.rememberAddress(address(`Street ${i}`));
+
+    expect(user.addresses).toHaveLength(5);
+    expect(user.addresses[0].street).toBe('Street 11');
+  });
+
+  it('ignores an address with no street or city', () => {
+    const user = make();
+    expect(user.rememberAddress({ street: '', city: 'Lalitpur' })).toBe(false);
+    expect(user.rememberAddress({ street: 'Somewhere', city: '' })).toBe(false);
+    expect(user.rememberAddress(undefined)).toBe(false);
+    expect(user.addresses).toHaveLength(0);
+  });
+});

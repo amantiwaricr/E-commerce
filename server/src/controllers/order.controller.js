@@ -128,6 +128,14 @@ const createOrder = asyncHandler(async (req, res) => {
   cart.items = [];
   await cart.save();
 
+  // Remember where this went, so the next checkout is already filled in. A
+  // failure here must not affect an order that has already been placed.
+  try {
+    if (req.user.rememberAddress(shippingAddress)) await req.user.save();
+  } catch (err) {
+    logger.warn(`Could not save the delivery address for ${req.user.email}: ${err.message}`);
+  }
+
   const response = { success: true, order: order.toJSON() };
 
   if (isOnline) {

@@ -52,6 +52,39 @@ const userSchema = new mongoose.Schema(
 );
 
 /** Hashes and stores a new password. */
+/** Two addresses are the same delivery point if these fields match. */
+const addressKey = (a = {}) =>
+  ['street', 'city', 'phone']
+    .map((field) => String(a[field] || '').trim().toLowerCase().replace(/\s+/g, ' '))
+    .join('|');
+
+/**
+ * Remembers an address used at checkout, newest first, so the next order can be
+ * prefilled. Re-using an address moves it back to the front rather than
+ * duplicating it; the list is capped so it cannot grow without bound.
+ */
+userSchema.methods.rememberAddress = function rememberAddress(address) {
+  if (!address?.street || !address?.city) return false;
+
+  const key = addressKey(address);
+  const rest = (this.addresses || []).filter((saved) => addressKey(saved) !== key);
+
+  this.addresses = [
+    {
+      label: address.label || 'Delivery address',
+      recipientName: address.recipientName,
+      phone: address.phone,
+      street: address.street,
+      city: address.city,
+      district: address.district || '',
+      landmark: address.landmark || '',
+    },
+    ...rest,
+  ].slice(0, 5);
+
+  return true;
+};
+
 userSchema.methods.setPassword = async function setPassword(plain) {
   this.passwordHash = await bcrypt.hash(plain, PASSWORD_ROUNDS);
 };

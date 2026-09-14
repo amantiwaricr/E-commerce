@@ -416,7 +416,8 @@ Every response is JSON. Errors come back as
 | POST | `/api/auth/login` | Public | Sign in; refuses unverified accounts with `403` |
 | POST | `/api/auth/change-password` | Customer | Change password, current one required |
 | GET | `/api/auth/me` | Customer | Current user |
-| PATCH | `/api/auth/me` | Customer | Update phone / saved addresses |
+| PATCH | `/api/auth/me` | Customer | Update name, phone, saved addresses |
+| POST | `/api/auth/me/avatar` | Customer | Upload a profile photo (2 MB, image only) |
 | POST | `/api/auth/logout` | Public | Clear the session cookie |
 
 ### Catalogue
@@ -491,6 +492,10 @@ Text index on name/description/tags; compound index on `category + price`; index
 A product rated 4.8+ earns the storefront's "Top item" flag; the featured one takes the hero tile.
 
 **Cart** — `user` (unique), `items[{ product, quantity }]`.
+
+The address used at checkout is saved to the account automatically, newest
+first, so the next order is prefilled. Re-using one moves it to the front rather
+than duplicating it, and the list is capped at five.
 
 **Order** — `orderNumber` (unique, indexed, `FMN-YYMM-NNNNN`), `user`, `items[]` (denormalised
 so history survives product edits), `itemsTotal`, `deliveryCharge`, `totalAmount`,

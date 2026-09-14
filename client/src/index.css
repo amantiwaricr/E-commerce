@@ -570,3 +570,72 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   .code-input { gap: 7px; }
   .code-input input { width: 46px; height: 54px; font-size: 1.4rem; }
 }
+
+/* ── Account menu ────────────────────────────────────────── */
+.account { position: relative; margin-left: 6px; }
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 232px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: var(--shadow-pop);
+  padding: 6px;
+  z-index: 60;
+  animation: pop .14s ease;
+}
+
+.account-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+
+.account-menu a,
+.account-menu button {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 0;
+  background: none;
+  border-radius: 9px;
+  font-size: .87rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.account-menu a:hover,
+.account-menu button:hover { background: var(--night-3); }
+.account-menu svg { color: var(--ink-3); flex-shrink: 0; }
+.account-menu a:hover svg { color: var(--violet); }
+.account-menu .ico-photo { width: 16px; text-align: center; color: var(--ink-3); }
+.account-menu .danger { color: #ff9092; margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 9px 9px; }
+.account-menu .danger:hover { background: rgba(255, 90, 92, .12); }
+
+/* ── Saved addresses at checkout ─────────────────────────── */
+.saved-addresses { display: grid; gap: 8px; margin-bottom: 18px; }
+
+.saved-address {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; text-align: left;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--night-3);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: .88rem;
+}
+.saved-address:hover { border-color: var(--violet-line); }
+.saved-address.on { border-color: var(--violet); background: var(--violet-soft); }
+.saved-address .tickdot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--night-4); flex-shrink: 0;
+}
+.saved-address.on .tickdot { border-color: var(--violet); box-shadow: inset 0 0 0 3px var(--violet); }
+.saved-address .badge { margin-left: auto; flex-shrink: 0; }
