@@ -17,7 +17,7 @@ export default function CartPage() {
           title="Your cart is empty"
           message="Add some fresh cuts and they will show up here."
           actionLabel="Browse the catalogue"
-          actionTo="/"
+          actionTo="/shop"
         />
       </div>
     );
@@ -100,7 +100,7 @@ export default function CartPage() {
             {isAuthenticated ? 'Proceed to checkout' : 'Sign in to check out'}
           </button>
 
-          <Link className="btn secondary block" to="/" style={{ marginTop: 10 }}>
+          <Link className="btn secondary block" to="/shop" style={{ marginTop: 10 }}>
             Keep shopping
           </Link>
         </aside>

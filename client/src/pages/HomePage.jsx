@@ -1,0 +1,302 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '../api/client';
+import Emblem from '../components/Emblem';
+import {
+  ArrowRight, CartIcon, FarmIcon, GridIcon, LeafIcon, PhoneIcon,
+  PinIcon, SearchIcon, ShieldIcon, SnowIcon, StarIcon, UserIcon,
+} from '../components/icons';
+import { useCart } from '../context/CartContext';
+import { formatNpr } from '../utils/format';
+import { CATEGORIES, HERO_IMAGE, STORE_NAME, SUPPORT_PHONE } from '../config';
+
+/** Marketing copy for the hero badges — edit these to match the business. */
+const PROMISES = [
+  { Icon: FarmIcon, title: 'Cut To Order', note: 'Same morning' },
+  { Icon: SnowIcon, title: 'Cold Chain', note: 'Never re-frozen' },
+  { Icon: ShieldIcon, title: 'Halal Certified', note: '100% Halal' },
+];
+
+const STEPS = [
+  { n: 'STEP 01', h: 'Pick your cut', p: 'Browse fresh, processed, marinated and seafood lines with live stock counts from the shop floor.' },
+  { n: 'STEP 02', h: 'Pay your way', p: 'eSewa wallet, debit or credit card through eSewa, or simply pay the rider cash on delivery.' },
+  { n: 'STEP 03', h: 'Track to your door', p: 'Every order gets a live timeline plus email and WhatsApp updates until it is handed over.' },
+];
+
+export default function HomePage() {
+  const navigate = useNavigate();
+  const { addItem } = useCart();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [facets, setFacets] = useState(null);
+  const [heroBroken, setHeroBroken] = useState(false);
+
+  useEffect(() => {
+    api.get('/products', { params: { limit: 8, sort: 'rating' } })
+      .then(({ data }) => setProducts(data.products))
+      .catch(() => setProducts([]));
+    api.get('/products/facets')
+      .then(({ data }) => setFacets(data.facets))
+      .catch(() => setFacets(null));
+  }, []);
+
+  // Headline figures come from the catalogue, never from invented numbers.
+  const stats = useMemo(() => {
+    if (!products.length) return { rating: null, reviews: 0 };
+    const rated = products.filter((p) => p.rating > 0);
+    const rating = rated.length ? rated.reduce((s, p) => s + p.rating, 0) / rated.length : null;
+    const reviews = products.reduce((s, p) => s + (p.reviewCount || 0), 0);
+    return { rating, reviews };
+  }, [products]);
+
+  // A purpose-shot hero wins; otherwise fall back to the best-rated product.
+  const heroImage = HERO_IMAGE || products.find((p) => p.images?.[0])?.images[0];
+  // Falls back on an empty list too, not just a failed request.
+  const categoryCounts = facets?.categories?.length
+    ? facets.categories
+    : CATEGORIES.map((name) => ({ name, count: 0 }));
+
+  return (
+    <div className="home">
+      <header className="home-nav">
+        <Link to="/" className="home-brand">
+          <Emblem className="emblem" />
+          <span>
+            <span className="word">FRESH MEAT</span>
+            <span className="sub">NEPAL</span>
+          </span>
+        </Link>
+
+        <nav className={`nav-pill ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
+          <span className="dots" aria-hidden="true"><GridIcon width={16} height={16} /></span>
+          <Link to="/" className="active">Home</Link>
+          <a href="#how">About</a>
+          <Link to="/shop">Meat Market</Link>
+          <a href="#contact">Contact</a>
+          <button type="button" className="nav-search" aria-label="Search the shop" onClick={() => navigate('/shop')}>
+            <SearchIcon width={16} height={16} />
+          </button>
+        </nav>
+
+        <button
+          type="button"
+          className="home-burger"
+          aria-label="Toggle navigation"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          ☰
+        </button>
+
+        <Link to="/login" className="home-login">
+          Log In
+          <span className="ico"><UserIcon width={15} height={15} /></span>
+        </Link>
+      </header>
+
+      <section className="hero">
+        <div className={`hero-photo ${heroBroken || !heroImage ? 'empty' : ''}`}>
+          {heroImage && !heroBroken && (
+            <img src={heroImage} alt="" onError={() => setHeroBroken(true)} />
+          )}
+        </div>
+
+        <div className="hero-inner wrap">
+          <div className="hero-copy">
+            <p className="eyebrow">
+              <span className="rule" />
+              Fresh &amp; Premium
+              <LeafIcon width={20} height={20} />
+            </p>
+
+            <h1 className="hero-title">
+              <span className="l1">Fresh Meat</span>
+              <span className="l2">Nepal</span>
+            </h1>
+
+            <p className="hero-sub">
+              100% Natural <span className="sep" /> Farm Fresh <span className="sep" /> Halal Certified
+            </p>
+
+            <div className="hero-stats">
+              <div>
+                <div className="stat-big">{stats.rating ? stats.rating.toFixed(1) : '—'}</div>
+                <div className="stars">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <StarIcon key={n} filled={n <= Math.round(stats.rating || 0)} />
+                  ))}
+                </div>
+                <div className="stat-label">Customer Rating</div>
+              </div>
+
+              <span className="divider" />
+
+              <div>
+                <div className="stat-big">
+                  {stats.reviews >= 1000 ? `${(stats.reviews / 1000).toFixed(1)}K+` : stats.reviews}
+                </div>
+                <div className="faces">
+                  {['S', 'R', 'A'].map((f) => <span key={f}>{f}</span>)}
+                </div>
+                <div className="stat-label">Customer Reviews</div>
+              </div>
+            </div>
+
+            <div className="promises">
+              {PROMISES.map(({ Icon, title, note }) => (
+                <div className="promise" key={title}>
+                  <span className="ico"><Icon width={17} height={17} /></span>
+                  <span>
+                    <b>{title}</b>
+                    <small>{note}</small>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="hero-foot" id="contact">
+              <div className="touch">
+                Get in Touch:
+                <a
+                  className="round-btn"
+                  href="https://maps.google.com/?q=Kathmandu+Nepal"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Find us on the map"
+                >
+                  <PinIcon width={18} height={18} />
+                </a>
+                <a className="round-btn" href={`tel:${SUPPORT_PHONE}`} aria-label={`Call ${SUPPORT_PHONE}`}>
+                  <PhoneIcon width={18} height={18} />
+                </a>
+              </div>
+
+              <Link className="cta-pill" to="/shop">
+                Shop Meat Market
+                <CartIcon width={19} height={19} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <h2>Shop by <em>category</em></h2>
+              <p>Every cut is butchered to order and delivered chilled across Kathmandu Valley.</p>
+            </div>
+            <Link className="cta-pill" to="/shop">Browse all <ArrowRight width={17} height={17} /></Link>
+          </div>
+
+          <div className="cat-grid">
+            {categoryCounts.map(({ name, count }) => (
+              <Link className="cat-card" key={name} to={`/shop?category=${encodeURIComponent(name)}`}>
+                <ArrowRight className="go" width={18} height={18} />
+                <div className="n">{name}</div>
+                <div className="c">{count} {count === 1 ? 'product' : 'products'}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {products.length > 0 && (
+        <section className="home-section">
+          <div className="wrap">
+            <div className="section-head">
+              <div>
+                <h2>Best <em>rated</em> today</h2>
+                <p>The cuts our customers come back for, ranked by their own reviews.</p>
+              </div>
+            </div>
+
+            <div className="home-grid">
+              {products.slice(0, 8).map((product) => (
+                <article className="home-card" key={product._id || product.id}>
+                  <Link className="shot" to={`/products/${product.slug}`}>
+                    {product.images?.[0] ? (
+                      <img src={product.images[0]} alt={product.name} loading="lazy"
+                           onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    ) : (
+                      <span className="none">No image</span>
+                    )}
+                    {product.rating >= 4.8 && <span className="tag">Top rated</span>}
+                  </Link>
+
+                  <div className="meta">
+                    <Link className="nm" to={`/products/${product.slug}`}>{product.name}</Link>
+                    {product.rating > 0 && (
+                      <span className="rt">
+                        <StarIcon /> {product.rating.toFixed(1)}
+                        <span style={{ color: 'var(--paper-3)', fontWeight: 500 }}>({product.reviewCount})</span>
+                      </span>
+                    )}
+                    <div className="pr">
+                      <b>{formatNpr(product.price)} <span>/ {product.unit}</span></b>
+                      <button
+                        type="button"
+                        className="buy"
+                        disabled={product.stock <= 0}
+                        onClick={() => addItem(product, 1)}
+                      >
+                        {product.stock > 0 ? 'Add' : 'Out'}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="home-section" id="how">
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <h2>How it <em>works</em></h2>
+              <p>From the block to your kitchen, in three steps.</p>
+            </div>
+          </div>
+
+          <div className="steps">
+            {STEPS.map(({ n, h, p }) => (
+              <div className="step" key={n}>
+                <div className="num">{n}</div>
+                <h3>{h}</h3>
+                <p>{p}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <div className="wrap">
+          <div className="band">
+            <div>
+              <h2>Ready when <em>you</em> are</h2>
+              <p>Order before 4 PM for same-day delivery inside the Valley, or collect in store with no delivery charge.</p>
+            </div>
+            <Link className="cta-pill" to="/shop">
+              Shop Meat Market
+              <CartIcon width={19} height={19} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="home-footer">
+        <div className="wrap cols">
+          <span>© {new Date().getFullYear()} {STORE_NAME} · Kathmandu, Nepal</span>
+          <span>
+            <Link to="/shop">Meat Market</Link> · <Link to="/orders">Track an order</Link> · {SUPPORT_PHONE}
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+}

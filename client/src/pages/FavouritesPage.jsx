@@ -55,7 +55,7 @@ export default function FavouritesPage() {
           title="Nothing saved yet"
           message="Tap the heart on any product to keep it here."
           actionLabel="Browse the shop"
-          actionTo="/"
+          actionTo="/shop"
         />
       ) : (
         <div className="grid">

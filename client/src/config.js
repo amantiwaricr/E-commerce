@@ -14,6 +14,12 @@ export const IS_GOOGLE_CONFIGURED =
 export const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Fresh Meat Nepal';
 export const SUPPORT_PHONE = import.meta.env.VITE_SUPPORT_PHONE || '+977-9800000000';
 
+/**
+ * Landing-page hero photograph. Leave unset and the best-rated product's image
+ * is used instead; set it to a wide, dark shot for the intended look.
+ */
+export const HERO_IMAGE = import.meta.env.VITE_HERO_IMAGE || '';
+
 export const CATEGORIES = ['Fresh Meat', 'Processed Meat', 'Marinated', 'Offal', 'Seafood'];
 
 export const ORDER_STATUS_FLOW = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];

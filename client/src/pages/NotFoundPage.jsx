@@ -7,7 +7,7 @@ export default function NotFoundPage() {
         title="404 — page not found"
         message="The page you were looking for does not exist."
         actionLabel="Go to the shop"
-        actionTo="/"
+        actionTo="/shop"
       />
     </div>
   );

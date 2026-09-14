@@ -23,7 +23,7 @@ export default function TopBar() {
     if (term.trim()) next.set('search', term.trim());
     else next.delete('search');
     next.delete('page');
-    navigate(`/?${next.toString()}`);
+    navigate(`/shop?${next.toString()}`);
   };
 
   return (

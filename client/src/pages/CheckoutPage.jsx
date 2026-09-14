@@ -93,7 +93,7 @@ export default function CheckoutPage() {
           title="Nothing to check out"
           message="Your cart is empty."
           actionLabel="Browse the catalogue"
-          actionTo="/"
+          actionTo="/shop"
         />
       </div>
     );

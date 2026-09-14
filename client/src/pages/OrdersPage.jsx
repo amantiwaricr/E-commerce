@@ -42,7 +42,7 @@ export default function OrdersPage() {
           title="No orders yet"
           message="Once you place an order it will appear here with live tracking."
           actionLabel="Start shopping"
-          actionTo="/"
+          actionTo="/shop"
         />
       ) : (
         <>

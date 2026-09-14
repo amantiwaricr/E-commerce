@@ -10,6 +10,7 @@ import { CartProvider } from './context/CartContext';
 import { FavouritesProvider } from './context/FavouritesContext';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
+import './home.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
