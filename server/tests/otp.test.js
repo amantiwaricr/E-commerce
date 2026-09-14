@@ -52,55 +52,31 @@ describe('Verification codes', () => {
 });
 
 describe('Returning the code in the response', () => {
-  /** The flag is read from env at import time, so each case needs a fresh module. */
-  const echoWith = (vars) => {
+  /** The production gate is read from env at import time. */
+  const canReveal = (nodeEnv, delivered) => {
     let result;
     jest.isolateModules(() => {
-      const previous = {};
-      Object.entries(vars).forEach(([k, v]) => {
-        previous[k] = process.env[k];
-        if (v === undefined) delete process.env[k];
-        else process.env[k] = v;
-      });
+      const previous = process.env.NODE_ENV;
+      process.env.NODE_ENV = nodeEnv;
       // eslint-disable-next-line global-require
-      result = require('../src/services/otp.service').shouldEchoCode();
-      Object.entries(previous).forEach(([k, v]) => {
-        if (v === undefined) delete process.env[k];
-        else process.env[k] = v;
-      });
+      result = require('../src/services/otp.service').canRevealCode({ delivered });
+      process.env.NODE_ENV = previous;
     });
     return result;
   };
 
-  const SMTP = { SMTP_HOST: 'smtp.example.com', SMTP_USER: 'u', SMTP_PASSWORD: 'p' };
-  const NO_SMTP = { SMTP_HOST: undefined, SMTP_USER: undefined, SMTP_PASSWORD: undefined };
-  // Exactly what .env.example ships — non-empty, but unusable.
-  const PLACEHOLDER_SMTP = {
-    SMTP_HOST: 'smtp.gmail.com',
-    SMTP_USER: 'your-gmail-address@gmail.com',
-    SMTP_PASSWORD: 'your-16-char-app-password',
-  };
-
-  it('is NEVER allowed in production, even without SMTP', () => {
-    expect(echoWith({ NODE_ENV: 'production', ...NO_SMTP })).toBe(false);
-    expect(echoWith({ NODE_ENV: 'production', ...SMTP })).toBe(false);
+  it('is NEVER allowed in production, delivered or not', () => {
+    expect(canReveal('production', false)).toBe(false);
+    expect(canReveal('production', true)).toBe(false);
   });
 
-  it('is not allowed in development once SMTP can deliver the code', () => {
-    expect(echoWith({ NODE_ENV: 'development', ...SMTP })).toBe(false);
+  it('is not allowed once the email actually reached the customer', () => {
+    expect(canReveal('development', true)).toBe(false);
   });
 
-  it('is allowed in development only when there is no way to email it', () => {
-    expect(echoWith({ NODE_ENV: 'development', ...NO_SMTP })).toBe(true);
-  });
-
-  it('treats the shipped placeholder credentials as no SMTP at all', () => {
-    // Otherwise the server tries to send through a fake Gmail account, fails,
-    // and withholds the code as well — leaving no way to verify an address.
-    expect(echoWith({ NODE_ENV: 'development', ...PLACEHOLDER_SMTP })).toBe(true);
-  });
-
-  it('still refuses to echo placeholder-configured servers in production', () => {
-    expect(echoWith({ NODE_ENV: 'production', ...PLACEHOLDER_SMTP })).toBe(false);
+  it('is allowed in development whenever the email did not go out', () => {
+    // Covers both no SMTP at all and a send that failed on bad credentials —
+    // otherwise a wrong password leaves someone with no code by any route.
+    expect(canReveal('development', false)).toBe(true);
   });
 });

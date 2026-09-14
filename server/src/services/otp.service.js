@@ -31,11 +31,14 @@ const cooldownRemaining = (lastSentAt) => {
 };
 
 /**
- * Without SMTP there is no way to receive a code, which would make the whole
- * sign-up flow untestable locally. Outside production the code is surfaced
- * instead, and never when real email is configured.
+ * Whether the code may be shown instead of emailed.
+ *
+ * Only outside production, and only when the email did not actually reach the
+ * customer — whether because no transport is configured or because the send
+ * failed. Judging this on the delivery outcome rather than on configuration
+ * means bad credentials cannot leave someone with no code by any route.
  */
-const shouldEchoCode = () => !env.isProduction && !env.mailConfigured;
+const canRevealCode = ({ delivered }) => !env.isProduction && !delivered;
 
 module.exports = {
   CODE_LENGTH,
@@ -47,5 +50,5 @@ module.exports = {
   compareCode,
   expiryFromNow,
   cooldownRemaining,
-  shouldEchoCode,
+  canRevealCode,
 };

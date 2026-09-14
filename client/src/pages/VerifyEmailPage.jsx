@@ -21,6 +21,7 @@ export default function VerifyEmailPage() {
   const [cooldown, setCooldown] = useState(0);
   // Shown only when the server could not email the code (no SMTP locally).
   const [devCode, setDevCode] = useState(location.state?.devCode || '');
+  const [mailError, setMailError] = useState(location.state?.mailError || '');
   const submitted = useRef(false);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function VerifyEmailPage() {
     try {
       const data = await resendCode(email);
       setDevCode(data.devCode || '');
+      setMailError(data.mailError || '');
       setCooldown(60);
       toast.success(data.message);
     } catch (err) {
@@ -80,10 +82,18 @@ export default function VerifyEmailPage() {
 
         {devCode && (
           <div className="alert info" style={{ textAlign: 'left' }}>
-            <strong>Email is not configured on this server.</strong>
+            <strong>The email did not go out, so here is your code.</strong>
             <p style={{ margin: '6px 0 0' }}>
-              Your code is <strong style={{ fontSize: '1.1rem', letterSpacing: 2 }}>{devCode}</strong>. Set the
-              <code> SMTP_*</code> values in <code>server/.env</code> to have codes emailed instead.
+              Your code is <strong style={{ fontSize: '1.1rem', letterSpacing: 2 }}>{devCode}</strong>.
+            </p>
+            {mailError && (
+              <p className="small" style={{ margin: '8px 0 0', opacity: .85 }}>
+                Reason: {mailError}
+              </p>
+            )}
+            <p className="small" style={{ margin: '8px 0 0', opacity: .85 }}>
+              Run <code>npm run mail:test</code> to check the <code>SMTP_*</code> settings in{' '}
+              <code>server/.env</code>. This box never appears in production.
             </p>
           </div>
         )}

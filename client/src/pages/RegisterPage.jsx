@@ -48,6 +48,7 @@ export default function RegisterPage() {
           email: data.email,
           message: data.message,
           devCode: data.devCode,
+          mailError: data.mailError,
           emailed: data.emailed,
           from: location.state?.from,
         },

@@ -18,6 +18,10 @@ const getTransporter = () => {
     port: env.mail.port,
     secure: env.mail.secure,
     auth: { user: env.mail.user, pass: env.mail.password },
+    // Fail fast: a blocked or unreachable mail host must not hang a request.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
   return transporter;
 };
@@ -32,7 +36,7 @@ const sendMail = async ({ to, subject, html, text }) => {
   const tx = getTransporter();
   if (!tx) {
     logger.warn(`SMTP not configured — skipping email "${subject}" to ${to}`);
-    return { sent: false, skipped: true, reason: 'smtp not configured' };
+    return { sent: false, skipped: true, reason: 'SMTP is not configured in server/.env' };
   }
 
   try {

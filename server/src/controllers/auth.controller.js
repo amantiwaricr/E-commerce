@@ -37,16 +37,18 @@ const issueVerificationCode = async (user) => {
 
   const result = await sendMail({ to: user.email, subject: mail.subject, html: mail.html, text: mail.text });
 
-  if (otp.shouldEchoCode()) {
-    logger.warn(
-      `SMTP is not configured — verification code for ${user.email} is ${code} ` +
-        '(set SMTP_* in server/.env to send this by email instead)'
-    );
-    return { code, emailed: false };
+  if (result.sent) return { code: null, emailed: true, reason: '' };
+
+  // The email did not reach them. Say why, loudly, rather than failing quietly.
+  const reason = result.error || result.reason || 'the email could not be sent';
+  logger.error(`Verification code for ${user.email} was NOT delivered: ${reason}`);
+
+  if (otp.canRevealCode({ delivered: false })) {
+    logger.warn(`Verification code for ${user.email} is ${code} — shown because the email did not go out`);
+    return { code, emailed: false, reason };
   }
 
-  if (!result.sent) logger.error(`Could not email a verification code to ${user.email}`);
-  return { code: null, emailed: result.sent };
+  return { code: null, emailed: false, reason };
 };
 
 /**
@@ -71,7 +73,7 @@ const register = asyncHandler(async (req, res) => {
   await user.setPassword(password);
   await user.save();
 
-  const { code, emailed } = await issueVerificationCode(user);
+  const { code, emailed, reason } = await issueVerificationCode(user);
 
   return res.status(201).json({
     success: true,
@@ -80,8 +82,9 @@ const register = asyncHandler(async (req, res) => {
       ? `We sent a ${otp.CODE_LENGTH}-digit code to ${user.email}. Enter it to finish creating your account.`
       : `Enter the ${otp.CODE_LENGTH}-digit code to finish creating your account.`,
     emailed,
-    // Present only when SMTP is unconfigured outside production.
+    // Both are present only outside production, when the email did not go out.
     ...(code ? { devCode: code } : {}),
+    ...(!emailed && !env.isProduction && reason ? { mailError: reason } : {}),
   });
 });
 
@@ -158,13 +161,14 @@ const resendCode = asyncHandler(async (req, res) => {
     throw new ApiError(429, `Please wait ${wait} second${wait === 1 ? '' : 's'} before requesting another code.`);
   }
 
-  const { code, emailed } = await issueVerificationCode(user);
+  const { code, emailed, reason } = await issueVerificationCode(user);
 
   return res.json({
     success: true,
     message: emailed ? `A new code is on its way to ${user.email}.` : 'A new code has been issued.',
     emailed,
     ...(code ? { devCode: code } : {}),
+    ...(!emailed && !env.isProduction && reason ? { mailError: reason } : {}),
   });
 });
 

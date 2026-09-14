@@ -24,10 +24,21 @@ const num = (value, fallback) => {
  * readable placeholders like `your-16-char-app-password`, and treating those as
  * real makes a service look configured when it cannot possibly work.
  */
+const PLACEHOLDER_PATTERNS = [
+  /^your[-._]/, // your-gmail-address@…, your.personal@…
+  /^the[-_]/, // the-16-char-app-password
+  /^change[-_]?me/,
+  /^</, // <paste-here>
+  /^(xxx+|placeholder|example|todo|tbd|dummy)$/,
+  /@example\.(com|org|net)$/,
+  /\bapp[-_]password\b/,
+  /\d+[-_]char\b/, // 16-char-…
+];
+
 const isPlaceholder = (value) => {
   const text = String(value || '').trim().toLowerCase();
   if (!text) return true;
-  return text.startsWith('your-') || text.startsWith('change-me') || text.startsWith('<');
+  return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(text));
 };
 
 const configured = (...values) => values.every((value) => !isPlaceholder(value));
