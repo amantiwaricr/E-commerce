@@ -19,6 +19,19 @@ const num = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+/**
+ * True only for a value a human actually filled in. `.env.example` ships
+ * readable placeholders like `your-16-char-app-password`, and treating those as
+ * real makes a service look configured when it cannot possibly work.
+ */
+const isPlaceholder = (value) => {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return true;
+  return text.startsWith('your-') || text.startsWith('change-me') || text.startsWith('<');
+};
+
+const configured = (...values) => values.every((value) => !isPlaceholder(value));
+
 const nodeEnv = process.env.NODE_ENV || 'development';
 const esewaMode = (process.env.ESEWA_MODE || 'sandbox').toLowerCase();
 const isProduction = nodeEnv === 'production';
@@ -76,7 +89,7 @@ const env = {
   },
 
   // True only when a real SMTP transport can be built.
-  mailConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD),
+  mailConfigured: configured(process.env.SMTP_HOST, process.env.SMTP_USER, process.env.SMTP_PASSWORD),
 
   whatsapp: {
     provider: (process.env.WHATSAPP_PROVIDER || 'none').toLowerCase(),
@@ -123,4 +136,4 @@ const validateEnv = () => {
   }
 };
 
-module.exports = { env, validateEnv, bool, num };
+module.exports = { env, validateEnv, bool, num, isPlaceholder, configured };

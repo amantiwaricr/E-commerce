@@ -74,6 +74,12 @@ describe('Returning the code in the response', () => {
 
   const SMTP = { SMTP_HOST: 'smtp.example.com', SMTP_USER: 'u', SMTP_PASSWORD: 'p' };
   const NO_SMTP = { SMTP_HOST: undefined, SMTP_USER: undefined, SMTP_PASSWORD: undefined };
+  // Exactly what .env.example ships — non-empty, but unusable.
+  const PLACEHOLDER_SMTP = {
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_USER: 'your-gmail-address@gmail.com',
+    SMTP_PASSWORD: 'your-16-char-app-password',
+  };
 
   it('is NEVER allowed in production, even without SMTP', () => {
     expect(echoWith({ NODE_ENV: 'production', ...NO_SMTP })).toBe(false);
@@ -86,5 +92,15 @@ describe('Returning the code in the response', () => {
 
   it('is allowed in development only when there is no way to email it', () => {
     expect(echoWith({ NODE_ENV: 'development', ...NO_SMTP })).toBe(true);
+  });
+
+  it('treats the shipped placeholder credentials as no SMTP at all', () => {
+    // Otherwise the server tries to send through a fake Gmail account, fails,
+    // and withholds the code as well — leaving no way to verify an address.
+    expect(echoWith({ NODE_ENV: 'development', ...PLACEHOLDER_SMTP })).toBe(true);
+  });
+
+  it('still refuses to echo placeholder-configured servers in production', () => {
+    expect(echoWith({ NODE_ENV: 'production', ...PLACEHOLDER_SMTP })).toBe(false);
   });
 });

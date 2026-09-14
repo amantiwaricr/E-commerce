@@ -97,26 +97,31 @@ const main = async () => {
   }
 
   console.log('\nEmail delivery (4-digit verification codes)');
+  // `.env.example` ships readable placeholders, which are not real values.
+  const placeholder = (v) => {
+    const t = String(v || '').trim().toLowerCase();
+    return !t || t.startsWith('your-') || t.startsWith('change-me') || t.startsWith('<');
+  };
   const smtpKeys = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD'];
-  const smtpMissing = smtpKeys.filter((k) => !server[k]);
+  const smtpMissing = smtpKeys.filter((k) => placeholder(server[k]));
 
   if (!smtpMissing.length) {
     ok('SMTP is configured', `${server.SMTP_HOST}:${server.SMTP_PORT || 587} as ${mask(server.SMTP_USER)}`);
     if (!server.MAIL_FROM_ADDRESS) warn('MAIL_FROM_ADDRESS is empty', 'Codes will be sent from SMTP_USER.');
   } else {
-    warn(`SMTP is not configured (missing ${smtpMissing.join(', ')})`,
+    warn(`SMTP is not configured (${smtpMissing.join(', ')} still unset or placeholder)`,
          'Sign-up still works: the code is printed in the server terminal and shown on the verification ' +
          'screen. Fill in SMTP_* in server/.env to email codes for real.');
   }
 
-  if (!server.JWT_SECRET || server.JWT_SECRET.startsWith('change-me')) {
+  if (placeholder(server.JWT_SECRET)) {
     warn('JWT_SECRET is still the example value',
          'Fine locally; generate a real one before deploying (openssl rand -hex 48).');
   } else {
     ok('JWT_SECRET is set');
   }
 
-  if (!server.SEED_ADMIN_PASSWORD) {
+  if (placeholder(server.SEED_ADMIN_PASSWORD)) {
     warn('SEED_ADMIN_PASSWORD is empty',
          'Run `npm run setup` to set one, then `npm run seed` to create the admin account.');
   } else {

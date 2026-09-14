@@ -169,6 +169,10 @@ code is printed in the server terminal and shown on the verification screen,
 which keeps local development usable. This never happens when `NODE_ENV=production`,
 and never when SMTP is configured; there are tests for both.
 
+A half-filled `SMTP_*` block counts as *not* configured. Placeholder values such
+as `your-16-char-app-password` are recognised as unfilled, because a server that
+believes it can send email will neither deliver a code nor show you one.
+
 **The admin account** is created by `npm run seed` with `SEED_ADMIN_PASSWORD`
 (or a generated password printed once), pre-verified, and signs in at the admin
 panel with the same email and password.

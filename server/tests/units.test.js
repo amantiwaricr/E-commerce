@@ -148,3 +148,31 @@ describe('order status machine', () => {
     expect(ORDER_STATUS_TRANSITIONS.cancelled).toEqual([]);
   });
 });
+
+describe('Placeholder detection', () => {
+  const { isPlaceholder, configured } = require('../src/config/env');
+
+  it.each([
+    'your-gmail-address@gmail.com',
+    'your-16-char-app-password',
+    'change-me-to-a-long-random-secret',
+    '<paste-here>',
+    '',
+    '   ',
+    undefined,
+  ])('treats %s as not filled in', (value) => {
+    expect(isPlaceholder(value)).toBe(true);
+  });
+
+  it.each(['smtp.gmail.com', 'orders@freshmeatnepal.com', 'abcd efgh ijkl mnop'])(
+    'treats %s as a real value',
+    (value) => {
+      expect(isPlaceholder(value)).toBe(false);
+    }
+  );
+
+  it('requires every value to be real before calling a service configured', () => {
+    expect(configured('smtp.gmail.com', 'me@gmail.com', 'a-real-password')).toBe(true);
+    expect(configured('smtp.gmail.com', 'your-gmail-address@gmail.com', 'a-real-password')).toBe(false);
+  });
+});

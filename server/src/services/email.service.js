@@ -6,7 +6,8 @@ const logger = require('../utils/logger');
 
 let transporter = null;
 
-const isConfigured = () => Boolean(env.mail.host && env.mail.user && env.mail.password);
+// Single source of truth, so a placeholder can never look like a real transport.
+const isConfigured = () => env.mailConfigured;
 
 const getTransporter = () => {
   if (transporter) return transporter;
