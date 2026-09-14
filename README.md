@@ -332,7 +332,10 @@ use('fresh-meat-nepal');
 db.users.updateOne({ email: 'you@gmail.com' }, { $set: { role: 'admin' } });
 ```
 
-There are no schema migrations — Mongoose creates collections and indexes on first write.
+There are no schema migrations — Mongoose creates collections and indexes on
+first write. It does not, however, *remove* an index when a field leaves the
+schema, and a leftover unique index rejects every new document (they all share
+a missing value). The API drops such indexes on connect and logs each one.
 
 ---
 

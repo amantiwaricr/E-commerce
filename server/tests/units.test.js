@@ -349,3 +349,52 @@ describe('Which accounts each app accepts', () => {
     ]);
   });
 });
+
+describe('Detecting indexes left behind by removed fields', () => {
+  const { isObsoleteIndex } = require('../src/utils/indexes');
+  const User = require('../src/models/User');
+  const Product = require('../src/models/Product');
+
+  it('spots the unique googleId index left over from the old sign-in', () => {
+    // Exactly the index that made every registration after the first fail:
+    // no document has googleId any more, so they all collide on null.
+    const stale = { name: 'googleId_1', key: { googleId: 1 }, unique: true };
+    expect(isObsoleteIndex(User.schema, stale)).toBe(true);
+  });
+
+  it('keeps indexes whose fields the schema still has', () => {
+    expect(isObsoleteIndex(User.schema, { name: 'email_1', key: { email: 1 } })).toBe(false);
+    expect(isObsoleteIndex(Product.schema, { name: 'slug_1', key: { slug: 1 } })).toBe(false);
+    expect(isObsoleteIndex(Product.schema, { name: 'category_1_price_1', key: { category: 1, price: 1 } })).toBe(false);
+  });
+
+  it('never touches the _id index', () => {
+    expect(isObsoleteIndex(User.schema, { name: '_id_', key: { _id: 1 } })).toBe(false);
+  });
+
+  it('reads a text index by its weights, not its internal keys', () => {
+    const textIndex = {
+      name: 'name_text_description_text_tags_text',
+      key: { _fts: 'text', _ftsx: 1 },
+      weights: { name: 1, description: 1, tags: 1 },
+    };
+    expect(isObsoleteIndex(Product.schema, textIndex)).toBe(false);
+
+    const staleText = { name: 'old_text', key: { _fts: 'text', _ftsx: 1 }, weights: { subtitle: 1 } };
+    expect(isObsoleteIndex(Product.schema, staleText)).toBe(true);
+  });
+
+  it('treats a compound index as obsolete when any field has gone', () => {
+    const partly = { name: 'category_1_googleId_1', key: { category: 1, googleId: 1 } };
+    expect(isObsoleteIndex(Product.schema, partly)).toBe(true);
+  });
+
+  it('recognises nested schema paths as present', () => {
+    expect(isObsoleteIndex(User.schema, { name: 'v', key: { 'emailVerification.codeHash': 1 } })).toBe(false);
+  });
+
+  it('ignores malformed or empty index descriptions', () => {
+    expect(isObsoleteIndex(User.schema, undefined)).toBe(false);
+    expect(isObsoleteIndex(User.schema, { name: 'empty', key: {} })).toBe(false);
+  });
+});
