@@ -14,7 +14,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const redirectTo = location.state?.from?.pathname || '/';
+  // Default to the shop, not the landing page — signing in is almost always a
+  // step towards buying something.
+  const redirectTo = location.state?.from?.pathname || '/shop';
 
   if (loading) return <Loader label="Checking your session…" />;
   if (isAuthenticated) return <Navigate to={redirectTo} replace />;

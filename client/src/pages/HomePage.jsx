@@ -6,6 +6,7 @@ import {
   ArrowRight, CartIcon, FarmIcon, GridIcon, LeafIcon, PhoneIcon,
   PinIcon, SearchIcon, ShieldIcon, SnowIcon, StarIcon, UserIcon,
 } from '../components/icons';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { formatNpr } from '../utils/format';
 import { CATEGORIES, HERO_IMAGE, STORE_NAME, SUPPORT_PHONE } from '../config';
@@ -26,6 +27,7 @@ const STEPS = [
 export default function HomePage() {
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { user, isAuthenticated } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
@@ -89,8 +91,8 @@ export default function HomePage() {
           ☰
         </button>
 
-        <Link to="/login" className="home-login">
-          Log In
+        <Link to={isAuthenticated ? '/orders' : '/login'} className="home-login">
+          {isAuthenticated ? user.name.split(' ')[0] : 'Log In'}
           <span className="ico"><UserIcon width={15} height={15} /></span>
         </Link>
       </header>

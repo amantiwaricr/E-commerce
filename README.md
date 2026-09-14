@@ -79,6 +79,18 @@ npm run setup -- --google-client-id=123-abc.apps.googleusercontent.com --admin-e
 
 To configure by hand instead, follow the two sections below.
 
+### Something not working?
+
+```bash
+npm run doctor
+```
+
+Checks the configuration that local development depends on — that both apps and
+the API share one Google client ID, that the ports line up, that MongoDB is
+reachable — and prints exactly what to change. Start here when Google sign-in
+fails: a mismatched client ID between `client/.env` and `server/.env` fails
+silently at Google and is the usual cause.
+
 ### Backend
 
 ```bash

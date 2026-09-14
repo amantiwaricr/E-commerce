@@ -23,6 +23,28 @@ const verifyGoogleCredential = async (credential) => {
   return ticket.getPayload();
 };
 
+/** Turns a google-auth-library failure into something actionable. */
+const describeVerificationFailure = (message = '') => {
+  const text = String(message);
+
+  if (/audience/i.test(text)) {
+    return (
+      'Google sign-in is misconfigured: the client ID the browser used does not match ' +
+      'GOOGLE_CLIENT_ID on the server. Both must be the exact same value — run `npm run doctor` to compare them.'
+    );
+  }
+  if (/Token used too late|expired/i.test(text)) {
+    return 'That Google sign-in took too long and expired. Please try again.';
+  }
+  if (/Token used too early|clock/i.test(text)) {
+    return "Your computer's clock is out of sync with Google, so the sign-in could not be verified.";
+  }
+  if (/signature|Invalid token|Wrong number of segments|malformed/i.test(text)) {
+    return 'That Google sign-in token could not be verified. Please try signing in again.';
+  }
+  return 'Google sign-in failed. Please try again.';
+};
+
 /**
  * POST /api/auth/google
  * Exchanges a Google ID token for a session. Creates the user on first login.
@@ -38,8 +60,10 @@ const googleLogin = asyncHandler(async (req, res) => {
   try {
     payload = await verifyGoogleCredential(credential);
   } catch (err) {
+    // Google's messages are precise but obscure; name the actual misconfiguration
+    // so a failed sign-in points at its cause instead of "try again".
     logger.warn('Google credential verification failed:', err.message);
-    throw ApiError.unauthorized('Google sign-in failed. Please try again.');
+    throw ApiError.unauthorized(describeVerificationFailure(err.message));
   }
 
   if (!payload?.email || !payload?.sub) throw ApiError.unauthorized('Google account did not return an email');
@@ -140,6 +164,8 @@ const __setOAuthClient = (stub) => {
 
 module.exports = {
   googleLogin,
+  // Exported for testing: the mapping is the user-facing half of a failed login.
+  __describeVerificationFailure: describeVerificationFailure,
   devLogin,
   getMe,
   logout,
