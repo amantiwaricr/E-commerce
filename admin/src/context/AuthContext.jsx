@@ -22,7 +22,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password });
+    // The scope is what makes this an administrative session; a storefront
+    // sign-in with the same credentials cannot reach the admin API.
+    const { data } = await api.post('/auth/login', { email, password, scope: 'admin' });
     setToken(data.token);
     setUser(data.user);
     return data.user;

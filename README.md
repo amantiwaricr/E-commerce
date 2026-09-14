@@ -189,6 +189,17 @@ outbound SMTP — and times out rather than hanging.
 (or a generated password printed once), pre-verified, and signs in at the admin
 panel with the same email and password.
 
+**Sessions are scoped to the app that issued them.** Registration on the
+storefront can only ever create a `customer` — a `role` in the payload is
+ignored, because the account is built field by field rather than from the
+request body. Signing in on the storefront always yields a `storefront` session,
+even for a staff account, and the admin API refuses anything but an `admin`
+session. The admin panel asks for that scope explicitly and the server grants it
+only to an administrator. So there is exactly one way to reach the admin API:
+the admin panel, with admin credentials. The two apps also use different cookie
+names, since browser cookies ignore the port and :5173 and :5174 would otherwise
+share one.
+
 ## 5. eSewa setup (payments)
 
 The integration uses **eSewa ePay v2**.
@@ -413,7 +424,7 @@ Every response is JSON. Errors come back as
 | POST | `/api/auth/register` | Public | Create an account and send a verification code |
 | POST | `/api/auth/verify-email` | Public | Confirm the 4-digit code; activates the account and signs in |
 | POST | `/api/auth/resend-code` | Public | Send a new code (once per minute) |
-| POST | `/api/auth/login` | Public | Sign in; refuses unverified accounts with `403` |
+| POST | `/api/auth/login` | Public | Sign in. `scope: "admin"` requests an administrative session and is refused to non-admins; anything else yields a customer session. Unverified accounts get `403` |
 | POST | `/api/auth/change-password` | Customer | Change password, current one required |
 | GET | `/api/auth/me` | Customer | Current user |
 | PATCH | `/api/auth/me` | Customer | Update name, phone, saved addresses |

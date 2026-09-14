@@ -259,6 +259,124 @@ describeWithDb('Registration validation', () => {
   });
 });
 
+describeWithDb('Storefront and admin sessions are separate', () => {
+  let app;
+
+  beforeAll(async () => {
+    await connect();
+    app = createApp();
+  });
+  afterEach(async () => clear());
+  afterAll(async () => disconnect());
+
+  const signIn = (user, scope) =>
+    request(app)
+      .post('/api/auth/login')
+      .send({ email: user.email, password: DEFAULT_PASSWORD, ...(scope ? { scope } : {}) });
+
+  it('gives the storefront a customer-level session even for an admin account', async () => {
+    const admin = await createAdmin();
+
+    const res = await signIn(admin);
+    expect(res.status).toBe(200);
+    expect(res.body.scope).toBe('storefront');
+
+    // Signed in, but the admin API stays shut.
+    const stats = await request(app)
+      .get('/api/admin/stats')
+      .set({ Authorization: `Bearer ${res.body.token}` });
+    expect(stats.status).toBe(403);
+    expect(stats.body.message).toMatch(/admin panel/i);
+  });
+
+  it('opens the admin API only for an admin-scoped session', async () => {
+    const admin = await createAdmin();
+
+    const res = await signIn(admin, 'admin');
+    expect(res.status).toBe(200);
+    expect(res.body.scope).toBe('admin');
+
+    const stats = await request(app)
+      .get('/api/admin/stats')
+      .set({ Authorization: `Bearer ${res.body.token}` });
+    expect(stats.status).toBe(200);
+  });
+
+  it('refuses an admin-scoped sign-in for a customer account', async () => {
+    const customer = await createUser();
+
+    const res = await signIn(customer, 'admin');
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/does not have admin access/i);
+    expect(res.body.token).toBeUndefined();
+  });
+
+  it('still lets an admin shop on the storefront', async () => {
+    const admin = await createAdmin();
+    const res = await signIn(admin);
+
+    const me = await request(app).get('/api/auth/me').set({ Authorization: `Bearer ${res.body.token}` });
+    expect(me.status).toBe(200);
+    expect(me.body.user.role).toBe('admin');
+  });
+
+  it('sets a different cookie for each app', async () => {
+    const admin = await createAdmin();
+
+    const shop = await signIn(admin);
+    const panel = await signIn(admin, 'admin');
+
+    const name = (res) => res.headers['set-cookie'].find((c) => c.includes('token=')).split('=')[0];
+    expect(name(shop)).toBe('fmn_token');
+    expect(name(panel)).toBe('fmn_admin_token');
+  });
+
+  it('rejects an unknown scope rather than guessing', async () => {
+    const admin = await createAdmin();
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: admin.email, password: DEFAULT_PASSWORD, scope: 'superuser' });
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describeWithDb('Registration can only create customers', () => {
+  let app;
+
+  beforeAll(async () => {
+    await connect();
+    app = createApp();
+  });
+  afterEach(async () => clear());
+  afterAll(async () => disconnect());
+
+  it('ignores a role smuggled into the sign-up payload', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...SIGNUP, role: 'admin', isEmailVerified: true });
+
+    expect(res.status).toBe(201);
+
+    const user = await User.findOne({ email: 'sita.sharma@example.com' });
+    expect(user.role).toBe('customer');
+    // A forged `isEmailVerified` must not skip the code either.
+    expect(user.isEmailVerified).toBe(false);
+  });
+
+  it('leaves a new account unable to reach the admin API after verifying', async () => {
+    const created = await request(app).post('/api/auth/register').send({ ...SIGNUP, role: 'admin' });
+    const verified = await request(app)
+      .post('/api/auth/verify-email')
+      .send({ email: SIGNUP.email, code: created.body.devCode });
+
+    const stats = await request(app)
+      .get('/api/admin/stats')
+      .set({ Authorization: `Bearer ${verified.body.token}` });
+    expect(stats.status).toBe(403);
+  });
+});
+
 describeWithDb('Sign-in and sessions', () => {
   let app;
 
@@ -306,12 +424,9 @@ describeWithDb('Sign-in and sessions', () => {
     expect((await request(app).get('/api/auth/me').set({ Authorization: 'Bearer not.a.jwt' })).status).toBe(401);
   });
 
-  it('keeps customers out of the admin API and lets admins in', async () => {
+  it('keeps customers out of the admin API', async () => {
     const customer = await createUser();
-    const admin = await createAdmin();
-
     expect((await request(app).get('/api/admin/stats').set(authHeader(customer))).status).toBe(403);
-    expect((await request(app).get('/api/admin/stats').set(authHeader(admin))).status).toBe(200);
   });
 
   it('never returns the password hash', async () => {

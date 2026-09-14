@@ -34,6 +34,7 @@ export default function LoginPage() {
           ? 'That account has not verified its email address yet.'
           : err.message
       );
+      setForm((f) => ({ ...f, password: '' }));
       setBusy(false);
     }
   };

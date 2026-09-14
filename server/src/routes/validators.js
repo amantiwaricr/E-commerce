@@ -79,6 +79,7 @@ module.exports = {
   login: [
     body('email').trim().notEmpty().withMessage('Email is required').bail().isEmail().withMessage('Enter a valid email address'),
     body('password').isString().notEmpty().withMessage('Password is required'),
+    body('scope').optional().isIn(['storefront', 'admin']).withMessage('Unknown sign-in scope'),
   ],
 
   verifyEmail: [

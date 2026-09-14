@@ -232,3 +232,81 @@ describe('Remembering a delivery address', () => {
     expect(user.addresses).toHaveLength(0);
   });
 });
+
+describe('Session scopes', () => {
+  const jwt = require('jsonwebtoken');
+  const { SCOPES, signToken, COOKIE_NAMES } = require('../src/middleware/auth');
+
+  const user = { _id: { toString: () => 'user-id' }, role: 'admin' };
+  const decode = (token) => jwt.verify(token, process.env.JWT_SECRET);
+
+  it('defaults to a storefront session', () => {
+    expect(decode(signToken(user)).scope).toBe(SCOPES.STOREFRONT);
+  });
+
+  it('marks an admin session explicitly', () => {
+    expect(decode(signToken(user, SCOPES.ADMIN)).scope).toBe(SCOPES.ADMIN);
+  });
+
+  it('carries the role but keeps the scope separate from it', () => {
+    // An admin signing in on the shop gets role admin with a storefront scope,
+    // which is exactly the case the admin guard has to reject.
+    const payload = decode(signToken(user, SCOPES.STOREFRONT));
+    expect(payload.role).toBe('admin');
+    expect(payload.scope).toBe(SCOPES.STOREFRONT);
+  });
+
+  it('gives each app its own cookie, since cookies ignore the port', () => {
+    expect(COOKIE_NAMES[SCOPES.STOREFRONT]).not.toBe(COOKIE_NAMES[SCOPES.ADMIN]);
+  });
+});
+
+describe('The admin guard', () => {
+  const { SCOPES, requireAdmin } = require('../src/middleware/auth');
+
+  /** Runs the guard and reports whether it allowed the request through. */
+  const check = (user, tokenScope) => {
+    let error = null;
+    let allowed = false;
+    requireAdmin({ user, tokenScope }, {}, (err) => {
+      if (err) error = err;
+      else allowed = true;
+    });
+    return { allowed, status: error?.statusCode, message: error?.message };
+  };
+
+  const admin = { role: 'admin' };
+  const customer = { role: 'customer' };
+
+  it('allows an administrator holding an admin session', () => {
+    expect(check(admin, SCOPES.ADMIN).allowed).toBe(true);
+  });
+
+  it('refuses an administrator whose session came from the storefront', () => {
+    // The case this whole change exists for: signing in on the shop must not
+    // hand an admin the keys to the store.
+    const result = check(admin, SCOPES.STOREFRONT);
+    expect(result.allowed).toBe(false);
+    expect(result.status).toBe(403);
+    expect(result.message).toMatch(/admin panel/i);
+  });
+
+  it('refuses a customer even on an admin-scoped session', () => {
+    const result = check(customer, SCOPES.ADMIN);
+    expect(result.allowed).toBe(false);
+    expect(result.status).toBe(403);
+  });
+
+  it('refuses a customer on a storefront session', () => {
+    expect(check(customer, SCOPES.STOREFRONT).allowed).toBe(false);
+  });
+
+  it('refuses when there is no session at all', () => {
+    expect(check(undefined, undefined).status).toBe(401);
+  });
+
+  it('treats a scopeless legacy token as a storefront session', () => {
+    // Tokens issued before scopes existed must not be trusted as admin ones.
+    expect(check(admin, undefined).allowed).toBe(false);
+  });
+});

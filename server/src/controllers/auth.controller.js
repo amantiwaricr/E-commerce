@@ -5,7 +5,7 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const logger = require('../utils/logger');
-const { signToken, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
+const { SCOPES, signToken, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
 const otp = require('../services/otp.service');
 const templates = require('../services/templates');
 const { sendMail } = require('../services/email.service');
@@ -68,7 +68,9 @@ const register = asyncHandler(async (req, res) => {
 
   // An unverified account may be claimed again — someone who never received
   // their code can simply sign up a second time.
-  const user = existing || new User({ name: name.trim(), email });
+  // Built field by field, never from the request body: a `role` in the payload
+  // must not be able to create an administrator.
+  const user = existing || new User({ name: name.trim(), email, role: 'customer' });
   user.name = name.trim();
   await user.setPassword(password);
   await user.save();
@@ -104,8 +106,8 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
   if (user.isEmailVerified) {
     // Nothing to do, but do not strand someone who submitted twice.
-    const token = signToken(user);
-    setAuthCookie(res, token);
+    const token = signToken(user, SCOPES.STOREFRONT);
+    setAuthCookie(res, token, SCOPES.STOREFRONT);
     return res.json({ success: true, alreadyVerified: true, token, user: user.toPublicJSON() });
   }
 
@@ -174,11 +176,15 @@ const resendCode = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/auth/login
- * Rejects unverified accounts with a flag the UI uses to open the code screen.
+ *
+ * `scope` says which app is asking. The admin panel sends `admin` and only an
+ * administrator may use it; the storefront sends nothing and always receives a
+ * customer-level session, even for a staff account.
  */
 const login = asyncHandler(async (req, res) => {
   const email = normaliseEmail(req.body.email);
   const { password } = req.body;
+  const scope = req.body.scope === SCOPES.ADMIN ? SCOPES.ADMIN : SCOPES.STOREFRONT;
 
   const user = await User.findOne({ email }).select('+passwordHash');
   const passwordOk = user ? await user.verifyPassword(password) : false;
@@ -194,13 +200,17 @@ const login = asyncHandler(async (req, res) => {
     ]);
   }
 
+  if (scope === SCOPES.ADMIN && user.role !== 'admin') {
+    throw ApiError.forbidden('This account does not have admin access.');
+  }
+
   user.lastLoginAt = new Date();
   await user.save();
 
-  const token = signToken(user);
-  setAuthCookie(res, token);
+  const token = signToken(user, scope);
+  setAuthCookie(res, token, scope);
 
-  return res.json({ success: true, token, user: user.toPublicJSON() });
+  return res.json({ success: true, token, scope, user: user.toPublicJSON() });
 });
 
 /** GET /api/auth/me */
