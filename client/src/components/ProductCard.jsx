@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HeartIcon, TagIcon } from './icons';
 import { formatNpr } from '../utils/format';
@@ -16,12 +17,14 @@ export default function ProductCard({ product }) {
   const id = idOf(product);
   const out = !product.isAvailable || product.stock <= 0;
   const on = isFavourite(id);
+  const [broken, setBroken] = useState(false);
+  const image = !broken && product.images?.[0];
 
   return (
     <article className="pcard">
       <Link className="pcard-tile" to={`/products/${product.slug}`}>
-        {product.images?.[0] ? (
-          <img src={product.images[0]} alt={product.name} loading="lazy" />
+        {image ? (
+          <img src={image} alt={product.name} loading="lazy" onError={() => setBroken(true)} />
         ) : (
           <div className="noimg">No image</div>
         )}

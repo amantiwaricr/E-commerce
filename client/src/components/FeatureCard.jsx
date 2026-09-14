@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HeartIcon, StarIcon, TagIcon } from './icons';
 import { formatNpr } from '../utils/format';
@@ -24,10 +25,14 @@ export default function FeatureCard({ product }) {
   const id = idOf(product);
   const out = !product.isAvailable || product.stock <= 0;
   const on = isFavourite(id);
+  // The tile keeps its gradient background when the photo cannot be loaded.
+  const [broken, setBroken] = useState(false);
 
   return (
     <article className="feature">
-      {product.images?.[0] && <img src={product.images[0]} alt="" />}
+      {!broken && product.images?.[0] && (
+        <img src={product.images[0]} alt="" onError={() => setBroken(true)} />
+      )}
 
       {chipScores(product.rating).map((chip, i) => (
         <span className={`rating-chip c${i + 1}`} key={chip.who}>

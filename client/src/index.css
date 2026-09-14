@@ -33,8 +33,7 @@ body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--ink);
-  background: linear-gradient(135deg, #7f6cf0 0%, #9b8bf7 45%, #bda9fb 100%);
-  background-attachment: fixed;
+  background: var(--page);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -51,46 +50,34 @@ ul { margin: 0; padding: 0; list-style: none; }
 .stack { display: grid; gap: 16px; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ══ Floating app shell ══════════════════════════════════════ */
-.viewport { min-height: 100vh; padding: 22px 20px 30px; position: relative; overflow-x: hidden; }
+/* ══ App shell ═══════════════════════════════════════════════ */
+/* The app fills the window; content is centred by a shared inner gutter that
+   collapses to a flat 18px once the viewport is narrower than the max width. */
+:root { --gutter: max(18px, calc((100% - 1180px) / 2)); }
 
-/* Decorative dashed guides, as in the reference composition. */
-.viewport::before,
-.viewport::after {
-  content: '';
-  position: absolute;
-  width: 210px;
-  height: 210px;
-  background: repeating-linear-gradient(135deg, rgba(255,255,255,.5) 0 1px, transparent 1px 9px);
-  pointer-events: none;
-  opacity: .55;
-}
-.viewport::before { top: -40px; left: -60px; }
-.viewport::after { bottom: -40px; right: -60px; }
+.viewport { min-height: 100vh; position: relative; overflow-x: hidden; }
 
 .shell {
   position: relative;
-  max-width: 1060px;
-  margin: 0 auto;
   background: var(--page);
-  border-radius: var(--r-shell);
-  box-shadow: 0 24px 70px rgba(40, 24, 90, .28);
-  overflow: hidden;
-  min-height: calc(100vh - 52px);
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-.shell-body { padding: 0 18px 22px; flex: 1; }
+.shell-body { padding: 0 var(--gutter) 26px; flex: 1; }
 
 /* ══ Top bar ═════════════════════════════════════════════════ */
 .topbar {
   background: var(--card);
-  border-radius: var(--r-shell) var(--r-shell) 0 0;
+  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 13px 20px;
+  padding: 13px var(--gutter);
+  position: sticky;
+  top: 0;
+  z-index: 40;
 }
 
 .logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.25rem; letter-spacing: -.02em; }
@@ -322,7 +309,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .segmented button.on { background: var(--violet); border-color: var(--violet); color: #fff; }
 
 /* ══ Product grid ════════════════════════════════════════════ */
-.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
 
 .pcard {
   position: relative;
@@ -543,7 +530,7 @@ tbody tr:last-child td { border-bottom: none; }
 .toast button { background: none; border: 0; color: inherit; cursor: pointer; opacity: .8; margin-left: auto; }
 @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-.site-footer { padding: 20px; color: var(--ink-3); font-size: .78rem; text-align: center; border-top: 1px solid var(--line); margin-top: 8px; }
+.site-footer { padding: 22px var(--gutter); color: var(--ink-3); font-size: .78rem; text-align: center; border-top: 1px solid var(--line); }
 
 .filter-toggle { display: none; }
 
@@ -553,8 +540,6 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 @media (max-width: 860px) {
-  .viewport { padding: 12px 10px 20px; }
-  .shell { border-radius: 18px; }
   .browse { grid-template-columns: 1fr; }
   .filters { display: none; }
   .filters.open { display: block; }
@@ -581,5 +566,6 @@ tbody tr:last-child td { border-bottom: none; }
   .cart-line { grid-template-columns: 56px 1fr; }
   .cart-line .line-actions { grid-column: 1 / -1; }
   .topbar { padding: 11px 13px; gap: 10px; }
-  .shell-body { padding: 0 11px 16px; }
+  .shell-body { padding: 0 13px 18px; }
+  .site-footer { padding: 18px 13px; }
 }

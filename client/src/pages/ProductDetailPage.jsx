@@ -12,6 +12,7 @@ export default function ProductDetailPage() {
   const { addItem, loading: cartLoading } = useCart();
   const [product, setProduct] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [brokenImages, setBrokenImages] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,6 +22,7 @@ export default function ProductDetailPage() {
     setError('');
     setQuantity(1);
     setActiveImage(0);
+    setBrokenImages({});
 
     api
       .get(`/products/${slug}`)
@@ -50,8 +52,12 @@ export default function ProductDetailPage() {
         <div>
           <div className="card" style={{ overflow: 'hidden' }}>
             <div className="product-thumb" style={{ aspectRatio: '16 / 10' }}>
-              {product.images?.[activeImage] ? (
-                <img src={product.images[activeImage]} alt={product.name} />
+              {product.images?.[activeImage] && !brokenImages[activeImage] ? (
+                <img
+                  src={product.images[activeImage]}
+                  alt={product.name}
+                  onError={() => setBrokenImages((b) => ({ ...b, [activeImage]: true }))}
+                />
               ) : (
                 <div className="placeholder">No image available</div>
               )}
