@@ -10,6 +10,7 @@
  * matched by email on first Google sign-in and linked automatically.
  */
 
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { env } = require('../config/env');
 const { connectDB, disconnectDB } = require('../config/db');
@@ -50,24 +51,43 @@ const seedAdmin = async () => {
   const existing = await User.findOne({ email });
 
   if (existing) {
+    let changed = false;
     if (existing.role !== 'admin') {
       existing.role = 'admin';
-      await existing.save();
+      changed = true;
       log(`promoted existing user ${email} to admin`);
-    } else {
-      log(`admin ${email} already exists`);
     }
+    // A seeded admin is trusted, so it never has to verify its own address.
+    if (!existing.isEmailVerified) {
+      existing.isEmailVerified = true;
+      changed = true;
+    }
+    if (changed) await existing.save();
+    else log(`admin ${email} already exists`);
     return;
   }
 
-  await User.create({
+  // Without a configured password, generate one and show it exactly once.
+  const generated = !env.seed.adminPassword;
+  const password = env.seed.adminPassword || crypto.randomBytes(9).toString('base64url');
+
+  const admin = new User({
     name: env.seed.adminName,
     email,
-    // Placeholder: replaced with the real Google subject on first sign-in.
-    googleId: `seed-admin:${email}`,
     role: 'admin',
+    isEmailVerified: true,
   });
-  log(`admin created: ${email} — sign in with this Gmail address to claim it`);
+  await admin.setPassword(password);
+  await admin.save();
+
+  log(`admin created: ${email}`);
+  if (generated) {
+    log(`  password: ${password}`);
+    log('  (generated because SEED_ADMIN_PASSWORD is empty — save it now, it is not shown again)');
+  } else {
+    log('  password: the value of SEED_ADMIN_PASSWORD in server/.env');
+  }
+  log('  sign in at the admin panel: http://localhost:5174');
 };
 
 const run = async () => {

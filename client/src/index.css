@@ -551,3 +551,22 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   .shell-body { padding: 0 13px 18px; }
   .site-footer { padding: 18px 13px; }
 }
+
+/* ── One-time code entry ─────────────────────────────────── */
+.code-input { display: flex; justify-content: center; gap: 10px; margin: 22px 0 6px; }
+.code-input input {
+  width: 54px; height: 62px;
+  text-align: center;
+  font-size: 1.7rem; font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--night-3);
+  color: var(--ink);
+}
+.code-input input:focus { outline: 2px solid var(--violet); outline-offset: -1px; border-color: var(--violet); }
+.code-input input:disabled { opacity: .6; }
+
+@media (max-width: 400px) {
+  .code-input { gap: 7px; }
+  .code-input input { width: 46px; height: 54px; font-size: 1.4rem; }
+}

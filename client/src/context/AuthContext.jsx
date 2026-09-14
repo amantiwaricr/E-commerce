@@ -28,17 +28,27 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  /** Exchanges the Google ID token from @react-oauth/google for our session. */
-  const loginWithGoogle = useCallback(async (credential) => {
-    const { data } = await api.post('/auth/google', { credential });
+  /** Creates the account and triggers the verification email. No session yet. */
+  const register = useCallback(async (payload) => {
+    const { data } = await api.post('/auth/register', payload);
+    return data;
+  }, []);
+
+  /** Confirms the emailed code; on success the account is active and signed in. */
+  const verifyEmail = useCallback(async (email, code) => {
+    const { data } = await api.post('/auth/verify-email', { email, code });
     setToken(data.token);
     setUser(data.user);
     return data.user;
   }, []);
 
-  /** Development-only sign-in; the endpoint does not exist in production. */
-  const loginAsDev = useCallback(async () => {
-    const { data } = await api.post('/auth/dev-login');
+  const resendCode = useCallback(async (email) => {
+    const { data } = await api.post('/auth/resend-code', { email });
+    return data;
+  }, []);
+
+  const login = useCallback(async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password });
     setToken(data.token);
     setUser(data.user);
     return data.user;
@@ -66,12 +76,15 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: Boolean(user),
       isAdmin: user?.role === 'admin',
       hasToken: Boolean(getToken()),
-      loginWithGoogle,
-      loginAsDev,
+      isEmailVerified: Boolean(user?.isEmailVerified),
+      register,
+      verifyEmail,
+      resendCode,
+      login,
       logout,
       updateProfile,
     }),
-    [user, loading, loginWithGoogle, loginAsDev, logout, updateProfile]
+    [user, loading, register, verifyEmail, resendCode, login, logout, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

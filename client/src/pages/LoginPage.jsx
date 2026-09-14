@@ -1,106 +1,86 @@
 import { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Loader from '../components/Loader';
-import { IS_DEV, IS_GOOGLE_CONFIGURED, STORE_NAME } from '../config';
+import PasswordField from '../components/PasswordField';
+import { STORE_NAME } from '../config';
 
 export default function LoginPage() {
-  const { isAuthenticated, loading, loginWithGoogle, loginAsDev } = useAuth();
+  const { isAuthenticated, loading, login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Default to the shop, not the landing page — signing in is almost always a
-  // step towards buying something.
   const redirectTo = location.state?.from?.pathname || '/shop';
 
   if (loading) return <Loader label="Checking your session…" />;
   if (isAuthenticated) return <Navigate to={redirectTo} replace />;
 
-  const handleDevLogin = async () => {
-    setBusy(true);
-    setError('');
-    try {
-      const user = await loginAsDev();
-      toast.success(`Signed in as ${user.name} (development login)`);
-      navigate(redirectTo, { replace: true });
-    } catch (err) {
-      setError(
-        err.status === 404
-          ? 'The development login is not enabled. Run `npm run setup` and restart `npm run dev`.'
-          : err.message
-      );
-      setBusy(false);
-    }
-  };
+  const setField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const handleSuccess = async (response) => {
+  const submit = async (event) => {
+    event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      const user = await loginWithGoogle(response.credential);
-      toast.success(`Welcome, ${user.name.split(' ')[0]}!`);
+      const user = await login(form.email, form.password);
+      toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
       navigate(redirectTo, { replace: true });
     } catch (err) {
+      // An unverified account is sent to the code screen rather than dead-ended.
+      if (err.status === 403 && err.fieldErrors?.some((e) => e.message === 'unverified')) {
+        navigate('/verify', { state: { email: form.email.trim().toLowerCase(), from: location.state?.from } });
+        return;
+      }
       setError(err.message);
-    } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="container page" style={{ maxWidth: 460 }}>
-      <div className="panel" style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.4rem' }}>Sign in to {STORE_NAME}</h1>
-        <p className="muted small">
-          We use your Google account only — no password to remember, and your order updates go straight to your Gmail.
+    <div className="container page" style={{ maxWidth: 430 }}>
+      <div className="panel">
+        <h1 style={{ fontSize: '1.35rem', marginBottom: 4 }}>Sign in</h1>
+        <p className="muted small" style={{ marginTop: 0 }}>
+          Welcome back to {STORE_NAME}.
         </p>
 
         {error && <div className="alert error">{error}</div>}
 
-        {!IS_GOOGLE_CONFIGURED ? (
-          <div className="alert error" style={{ textAlign: 'left' }}>
-            <strong>Google sign-in is not configured yet.</strong>
-            <p style={{ margin: '8px 0 0' }}>
-              Create an OAuth 2.0 Web client ID in the Google Cloud Console with{' '}
-              <code>http://localhost:5173</code> as an authorised JavaScript origin, then set the same value in{' '}
-              <code>client/.env</code> as <code>VITE_GOOGLE_CLIENT_ID</code> and in <code>server/.env</code> as{' '}
-              <code>GOOGLE_CLIENT_ID</code>. Restart <code>npm run dev</code> afterwards — Vite only reads{' '}
-              <code>.env</code> at startup.
-            </p>
-          </div>
-        ) : busy ? (
-          <Loader label="Signing you in…" />
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '22px 0' }}>
-            <GoogleLogin
-              onSuccess={handleSuccess}
-              onError={() => setError('Google sign-in was cancelled or failed. Please try again.')}
-              useOneTap={false}
-              text="continue_with"
-              shape="pill"
+        <form onSubmit={submit}>
+          <div className="field">
+            <label htmlFor="email">Email address</label>
+            <input
+              id="email"
+              type="email"
+              value={form.email}
+              onChange={setField('email')}
+              autoComplete="email"
+              placeholder="you@example.com"
+              required
             />
           </div>
-        )}
 
-        {IS_DEV && !IS_GOOGLE_CONFIGURED && (
-          <div style={{ borderTop: '1px solid var(--line)', marginTop: 18, paddingTop: 18 }}>
-            <button type="button" className="btn secondary block" onClick={handleDevLogin} disabled={busy}>
-              Continue without Google (development only)
-            </button>
-            <p className="small muted" style={{ marginTop: 10, marginBottom: 0 }}>
-              Signs you in as the seeded admin so you can explore the shop, checkout and admin panel.
-              This button never appears in a production build.
-            </p>
-          </div>
-        )}
+          <PasswordField
+            id="password"
+            label="Password"
+            value={form.password}
+            onChange={setField('password')}
+            autoComplete="current-password"
+          />
 
-        <p className="small muted" style={{ marginTop: 18, marginBottom: 0 }}>
-          By continuing you agree to receive order updates by email and WhatsApp.
+          <button className="btn block" type="submit" disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+
+        <p className="small muted" style={{ marginTop: 18, marginBottom: 0, textAlign: 'center' }}>
+          New here? <Link to="/register" style={{ color: 'var(--violet)', fontWeight: 600 }}>Create an account</Link>
         </p>
       </div>
     </div>

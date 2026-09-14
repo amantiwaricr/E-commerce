@@ -1,109 +1,206 @@
 'use strict';
 
-const { OAuth2Client } = require('google-auth-library');
 const { env } = require('../config/env');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
-const { signToken, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
 const logger = require('../utils/logger');
+const { signToken, setAuthCookie, clearAuthCookie } = require('../middleware/auth');
+const otp = require('../services/otp.service');
+const templates = require('../services/templates');
+const { sendMail } = require('../services/email.service');
 
-let client = null;
-const getClient = () => {
-  if (!client) client = new OAuth2Client(env.googleClientId);
-  return client;
+const normaliseEmail = (value) => String(value || '').trim().toLowerCase();
+
+/**
+ * Issues a fresh code, stores only its hash, and emails it.
+ *
+ * Returns the code itself only when there is no SMTP transport and this is not
+ * production — otherwise local development could never complete a sign-up.
+ */
+const issueVerificationCode = async (user) => {
+  const code = otp.generateCode();
+
+  user.emailVerification = {
+    codeHash: await otp.hashCode(code),
+    expiresAt: otp.expiryFromNow(),
+    attempts: 0,
+    lastSentAt: new Date(),
+  };
+  await user.save();
+
+  const mail = templates.verificationEmail({
+    name: user.name,
+    code,
+    ttlMinutes: otp.CODE_TTL_MINUTES,
+  });
+
+  const result = await sendMail({ to: user.email, subject: mail.subject, html: mail.html, text: mail.text });
+
+  if (otp.shouldEchoCode()) {
+    logger.warn(
+      `SMTP is not configured — verification code for ${user.email} is ${code} ` +
+        '(set SMTP_* in server/.env to send this by email instead)'
+    );
+    return { code, emailed: false };
+  }
+
+  if (!result.sent) logger.error(`Could not email a verification code to ${user.email}`);
+  return { code: null, emailed: result.sent };
 };
 
 /**
- * Verifies a Google ID token (the `credential` returned by @react-oauth/google)
- * and returns its payload. Test seam: `__setOAuthClient` swaps the verifier.
+ * POST /api/auth/register
+ * Creates an unverified account and sends a code. No session is issued until
+ * the address has been proven.
  */
-const verifyGoogleCredential = async (credential) => {
-  const ticket = await getClient().verifyIdToken({ idToken: credential, audience: env.googleClientId });
-  return ticket.getPayload();
-};
+const register = asyncHandler(async (req, res) => {
+  const email = normaliseEmail(req.body.email);
+  const { name, password } = req.body;
 
-/** Turns a google-auth-library failure into something actionable. */
-const describeVerificationFailure = (message = '') => {
-  const text = String(message);
+  const existing = await User.findOne({ email });
 
-  if (/audience/i.test(text)) {
-    return (
-      'Google sign-in is misconfigured: the client ID the browser used does not match ' +
-      'GOOGLE_CLIENT_ID on the server. Both must be the exact same value — run `npm run doctor` to compare them.'
+  if (existing?.isEmailVerified) {
+    throw ApiError.conflict('An account with that email already exists. Please sign in instead.');
+  }
+
+  // An unverified account may be claimed again — someone who never received
+  // their code can simply sign up a second time.
+  const user = existing || new User({ name: name.trim(), email });
+  user.name = name.trim();
+  await user.setPassword(password);
+  await user.save();
+
+  const { code, emailed } = await issueVerificationCode(user);
+
+  return res.status(201).json({
+    success: true,
+    email: user.email,
+    message: emailed
+      ? `We sent a ${otp.CODE_LENGTH}-digit code to ${user.email}. Enter it to finish creating your account.`
+      : `Enter the ${otp.CODE_LENGTH}-digit code to finish creating your account.`,
+    emailed,
+    // Present only when SMTP is unconfigured outside production.
+    ...(code ? { devCode: code } : {}),
+  });
+});
+
+/**
+ * POST /api/auth/verify-email
+ * Checks the code and, on success, verifies the address and signs the user in.
+ */
+const verifyEmail = asyncHandler(async (req, res) => {
+  const email = normaliseEmail(req.body.email);
+  const code = String(req.body.code || '').trim();
+
+  const user = await User.findOne({ email }).select(
+    '+emailVerification.codeHash +emailVerification.expiresAt +emailVerification.attempts +emailVerification.lastSentAt'
+  );
+  if (!user) throw ApiError.badRequest('That code is not valid. Please request a new one.');
+  if (user.isBlocked) throw ApiError.forbidden('This account has been blocked. Contact support.');
+
+  if (user.isEmailVerified) {
+    // Nothing to do, but do not strand someone who submitted twice.
+    const token = signToken(user);
+    setAuthCookie(res, token);
+    return res.json({ success: true, alreadyVerified: true, token, user: user.toPublicJSON() });
+  }
+
+  const record = user.emailVerification || {};
+  if (!record.codeHash) throw ApiError.badRequest('No code is pending for this account. Please request a new one.');
+
+  if (record.expiresAt && record.expiresAt.getTime() < Date.now()) {
+    throw ApiError.badRequest('That code has expired. Please request a new one.');
+  }
+
+  if ((record.attempts || 0) >= otp.MAX_ATTEMPTS) {
+    throw ApiError.badRequest('Too many incorrect attempts. Please request a new code.');
+  }
+
+  const matches = await otp.compareCode(code, record.codeHash);
+  if (!matches) {
+    user.emailVerification.attempts = (record.attempts || 0) + 1;
+    await user.save();
+
+    const left = otp.MAX_ATTEMPTS - user.emailVerification.attempts;
+    throw ApiError.badRequest(
+      left > 0
+        ? `That code is not correct. ${left} attempt${left === 1 ? '' : 's'} left.`
+        : 'That code is not correct. Please request a new code.'
     );
   }
-  if (/Token used too late|expired/i.test(text)) {
-    return 'That Google sign-in took too long and expired. Please try again.';
-  }
-  if (/Token used too early|clock/i.test(text)) {
-    return "Your computer's clock is out of sync with Google, so the sign-in could not be verified.";
-  }
-  if (/signature|Invalid token|Wrong number of segments|malformed/i.test(text)) {
-    return 'That Google sign-in token could not be verified. Please try signing in again.';
-  }
-  return 'Google sign-in failed. Please try again.';
-};
 
-/**
- * POST /api/auth/google
- * Exchanges a Google ID token for a session. Creates the user on first login.
- */
-const googleLogin = asyncHandler(async (req, res) => {
-  const { credential } = req.body;
-  if (!credential) throw ApiError.badRequest('Google credential is required');
-  if (!env.googleConfigured) {
-    throw ApiError.internal('Google sign-in is not configured: set a real GOOGLE_CLIENT_ID in server/.env');
-  }
-
-  let payload;
-  try {
-    payload = await verifyGoogleCredential(credential);
-  } catch (err) {
-    // Google's messages are precise but obscure; name the actual misconfiguration
-    // so a failed sign-in points at its cause instead of "try again".
-    logger.warn('Google credential verification failed:', err.message);
-    throw ApiError.unauthorized(describeVerificationFailure(err.message));
-  }
-
-  if (!payload?.email || !payload?.sub) throw ApiError.unauthorized('Google account did not return an email');
-  if (payload.email_verified === false) throw ApiError.unauthorized('Your Google email is not verified');
-
-  const email = payload.email.toLowerCase();
-  let user = await User.findOne({ $or: [{ googleId: payload.sub }, { email }] });
-
-  if (!user) {
-    user = await User.create({
-      name: payload.name || email.split('@')[0],
-      email,
-      googleId: payload.sub,
-      avatar: payload.picture || '',
-      role: 'customer',
-      lastLoginAt: new Date(),
-    });
-    logger.info(`New user registered: ${email}`);
-  } else {
-    // Matched by googleId or by a Google-verified email, so this subject owns the
-    // account: claim it outright, which also replaces a seeded placeholder id.
-    user.googleId = payload.sub;
-    user.name = user.name || payload.name || user.name;
-    if (payload.picture) user.avatar = payload.picture;
-    user.lastLoginAt = new Date();
-    await user.save();
-  }
-
-  if (user.isBlocked) throw ApiError.forbidden('This account has been blocked. Contact support.');
+  user.isEmailVerified = true;
+  // The code is single-use: clear it so it can never be replayed.
+  user.emailVerification = undefined;
+  user.lastLoginAt = new Date();
+  await user.save();
 
   const token = signToken(user);
   setAuthCookie(res, token);
 
-  return res.status(200).json({ success: true, token, user: user.toPublicJSON() });
+  logger.info(`Email verified and account activated: ${user.email}`);
+  return res.json({ success: true, token, user: user.toPublicJSON() });
+});
+
+/** POST /api/auth/resend-code — throttled re-send for an unverified account. */
+const resendCode = asyncHandler(async (req, res) => {
+  const email = normaliseEmail(req.body.email);
+
+  const user = await User.findOne({ email }).select('+emailVerification.lastSentAt');
+  if (!user || user.isEmailVerified) {
+    // Do not confirm whether the address is registered.
+    return res.json({ success: true, message: 'If that account needs verifying, a new code is on its way.' });
+  }
+
+  const wait = otp.cooldownRemaining(user.emailVerification?.lastSentAt);
+  if (wait > 0) {
+    throw new ApiError(429, `Please wait ${wait} second${wait === 1 ? '' : 's'} before requesting another code.`);
+  }
+
+  const { code, emailed } = await issueVerificationCode(user);
+
+  return res.json({
+    success: true,
+    message: emailed ? `A new code is on its way to ${user.email}.` : 'A new code has been issued.',
+    emailed,
+    ...(code ? { devCode: code } : {}),
+  });
+});
+
+/**
+ * POST /api/auth/login
+ * Rejects unverified accounts with a flag the UI uses to open the code screen.
+ */
+const login = asyncHandler(async (req, res) => {
+  const email = normaliseEmail(req.body.email);
+  const { password } = req.body;
+
+  const user = await User.findOne({ email }).select('+passwordHash');
+  const passwordOk = user ? await user.verifyPassword(password) : false;
+
+  // One message for both cases, so the response cannot be used to discover
+  // which addresses are registered.
+  if (!user || !passwordOk) throw ApiError.unauthorized('Invalid email or password.');
+  if (user.isBlocked) throw ApiError.forbidden('This account has been blocked. Contact support.');
+
+  if (!user.isEmailVerified) {
+    throw new ApiError(403, 'Please verify your email address before signing in.', [
+      { field: 'email', message: 'unverified' },
+    ]);
+  }
+
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  const token = signToken(user);
+  setAuthCookie(res, token);
+
+  return res.json({ success: true, token, user: user.toPublicJSON() });
 });
 
 /** GET /api/auth/me */
-const getMe = asyncHandler(async (req, res) =>
-  res.json({ success: true, user: req.user.toPublicJSON() })
-);
+const getMe = asyncHandler(async (req, res) => res.json({ success: true, user: req.user.toPublicJSON() }));
 
 /** POST /api/auth/logout */
 const logout = asyncHandler(async (req, res) => {
@@ -121,55 +218,28 @@ const updateProfile = asyncHandler(async (req, res) => {
   return res.json({ success: true, user: req.user.toPublicJSON() });
 });
 
-/**
- * POST /api/auth/dev-login  (development only)
- *
- * Issues a session for a local account without going through Google, so the app
- * can be explored before OAuth credentials exist. Mounted only when
- * ENABLE_DEV_LOGIN=true and NODE_ENV is not production; the guard below is
- * defence in depth in case it is ever mounted by mistake.
- */
-const devLogin = asyncHandler(async (req, res) => {
-  if (!env.devLoginEnabled) throw ApiError.notFound('Route not found');
+/** POST /api/auth/change-password — requires the current password. */
+const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
 
-  const adminEmail = env.seed.adminEmail.toLowerCase();
-  const email = String(req.body?.email || adminEmail).toLowerCase().trim();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw ApiError.badRequest('A valid email is required');
-
-  let user = await User.findOne({ email });
-  if (!user) {
-    user = await User.create({
-      name: email.split('@')[0],
-      email,
-      // Namespaced so it can never collide with a real Google subject.
-      googleId: `dev-login:${email}`,
-      role: email === adminEmail ? 'admin' : 'customer',
-    });
+  const user = await User.findById(req.user._id).select('+passwordHash');
+  if (!(await user.verifyPassword(currentPassword))) {
+    throw ApiError.badRequest('Your current password is not correct.');
   }
-  if (user.isBlocked) throw ApiError.forbidden('This account has been blocked.');
 
-  user.lastLoginAt = new Date();
+  await user.setPassword(newPassword);
   await user.save();
 
-  logger.warn(`DEV LOGIN used for ${email} — ENABLE_DEV_LOGIN must never be set in production`);
-
-  const token = signToken(user);
-  setAuthCookie(res, token);
-  return res.json({ success: true, token, user: user.toPublicJSON(), devLogin: true });
+  return res.json({ success: true, message: 'Password updated.' });
 });
 
-const __setOAuthClient = (stub) => {
-  client = stub;
-};
-
 module.exports = {
-  googleLogin,
-  // Exported for testing: the mapping is the user-facing half of a failed login.
-  __describeVerificationFailure: describeVerificationFailure,
-  devLogin,
+  register,
+  verifyEmail,
+  resendCode,
+  login,
   getMe,
   logout,
   updateProfile,
-  __setOAuthClient,
-  verifyGoogleCredential,
+  changePassword,
 };

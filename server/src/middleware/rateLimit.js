@@ -17,4 +17,7 @@ module.exports = {
   apiLimiter: build(15 * 60 * 1000, 600, 'Too many requests, please try again in a few minutes'),
   authLimiter: build(15 * 60 * 1000, 30, 'Too many sign-in attempts, please try again later'),
   writeLimiter: build(60 * 1000, 40, 'You are doing that too often, please slow down'),
+  // A 4-digit code is only 10,000 values: cap guesses hard at the edge as well
+  // as per-account, so an attacker cannot spread attempts across accounts.
+  otpLimiter: build(15 * 60 * 1000, 20, 'Too many verification attempts, please try again later'),
 };

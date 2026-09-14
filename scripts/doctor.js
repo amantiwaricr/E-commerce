@@ -2,8 +2,8 @@
 'use strict';
 
 /**
- * Checks the configuration that Google sign-in (and the rest of local dev)
- * depends on, and says exactly what to change when something is wrong.
+ * Checks the configuration local development depends on and says exactly what
+ * to change when something is wrong.
  *
  *   npm run doctor
  */
@@ -14,8 +14,6 @@ const net = require('net');
 const http = require('http');
 
 const ROOT = path.resolve(__dirname, '..');
-const GOOGLE_SUFFIX = '.apps.googleusercontent.com';
-
 let failures = 0;
 let warnings = 0;
 
@@ -37,8 +35,6 @@ const readEnv = (file) => {
 
 /** Never print a full credential; enough to compare by eye. */
 const mask = (v) => (!v ? '(empty)' : v.length <= 14 ? v : `${v.slice(0, 8)}…${v.slice(-18)}`);
-
-const isRealClientId = (v) => Boolean(v) && v.endsWith(GOOGLE_SUFFIX) && !v.startsWith('your-');
 
 const portOpen = (host, port) =>
   new Promise((resolve) => {
@@ -86,8 +82,8 @@ const main = async () => {
   // A file that exists but defines almost nothing is the common broken state:
   // every later check fails confusingly, so call out the real problem once.
   const thin = [
-    ['server/.env', server, ['MONGODB_URI', 'GOOGLE_CLIENT_ID', 'JWT_SECRET', 'PORT']],
-    ['client/.env', client, ['VITE_API_URL', 'VITE_GOOGLE_CLIENT_ID']],
+    ['server/.env', server, ['MONGODB_URI', 'JWT_SECRET', 'PORT']],
+    ['client/.env', client, ['VITE_API_URL']],
   ].filter(([, env, required]) => required.some((key) => env[key] === undefined));
 
   if (thin.length) {
@@ -100,54 +96,31 @@ const main = async () => {
     process.exit(1);
   }
 
-  console.log('\nGoogle sign-in');
-  const serverId = server.GOOGLE_CLIENT_ID || '';
-  const clientId = client.VITE_GOOGLE_CLIENT_ID || '';
-  const adminId = admin?.VITE_GOOGLE_CLIENT_ID || '';
+  console.log('\nEmail delivery (4-digit verification codes)');
+  const smtpKeys = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD'];
+  const smtpMissing = smtpKeys.filter((k) => !server[k]);
 
-  if (!serverId) {
-    bad('server/.env has no GOOGLE_CLIENT_ID', 'Create an OAuth client ID, then run `npm run setup`.');
-  } else if (!isRealClientId(serverId)) {
-    bad(
-      `server/.env GOOGLE_CLIENT_ID is still the placeholder  ${mask(serverId)}`,
-      'Create a real one at https://console.cloud.google.com → Credentials → OAuth client ID → Web application.'
-    );
+  if (!smtpMissing.length) {
+    ok('SMTP is configured', `${server.SMTP_HOST}:${server.SMTP_PORT || 587} as ${mask(server.SMTP_USER)}`);
+    if (!server.MAIL_FROM_ADDRESS) warn('MAIL_FROM_ADDRESS is empty', 'Codes will be sent from SMTP_USER.');
   } else {
-    ok('server GOOGLE_CLIENT_ID looks real', mask(serverId));
+    warn(`SMTP is not configured (missing ${smtpMissing.join(', ')})`,
+         'Sign-up still works: the code is printed in the server terminal and shown on the verification ' +
+         'screen. Fill in SMTP_* in server/.env to email codes for real.');
   }
 
-  if (!isRealClientId(clientId)) {
-    bad(`client/.env VITE_GOOGLE_CLIENT_ID is not set to a real client ID  ${mask(clientId)}`,
-        'Run `npm run setup` and paste the client ID at the first prompt.');
+  if (!server.JWT_SECRET || server.JWT_SECRET.startsWith('change-me')) {
+    warn('JWT_SECRET is still the example value',
+         'Fine locally; generate a real one before deploying (openssl rand -hex 48).');
   } else {
-    ok('client VITE_GOOGLE_CLIENT_ID looks real', mask(clientId));
+    ok('JWT_SECRET is set');
   }
 
-  if (isRealClientId(serverId) && isRealClientId(clientId)) {
-    if (serverId === clientId) {
-      ok('client and server client IDs match');
-    } else {
-      bad('client and server are using DIFFERENT client IDs — sign-in will always fail',
-          'They must be byte-identical. Run `npm run setup` and paste the same value.');
-    }
-  }
-
-  if (admin && isRealClientId(serverId) && adminId && adminId !== serverId) {
-    warn('admin/.env uses a different client ID from the server',
-         'Admin sign-in will fail. Run `npm run setup` to sync all three.');
-  }
-
-  if (isRealClientId(clientId)) {
-    console.log('\n  Check these are listed as Authorised JavaScript origins on that OAuth client:');
-    console.log('    http://localhost:5173   (storefront)');
-    console.log('    http://localhost:5174   (admin panel)');
-    console.log('  A missing origin shows as "Error 401: invalid_client" or a popup that closes instantly.');
-  }
-
-  const devLogin = String(server.ENABLE_DEV_LOGIN || '').toLowerCase() === 'true';
-  if (devLogin) {
-    warn('ENABLE_DEV_LOGIN=true — the "Continue without Google" button is showing',
-         'Harmless locally; set it to false once Google sign-in works. Never enable it in production.');
+  if (!server.SEED_ADMIN_PASSWORD) {
+    warn('SEED_ADMIN_PASSWORD is empty',
+         'Run `npm run setup` to set one, then `npm run seed` to create the admin account.');
+  } else {
+    ok('admin account credentials are set', server.SEED_ADMIN_EMAIL || '');
   }
 
   console.log('\nServices');
@@ -188,7 +161,7 @@ const main = async () => {
   }
 
   console.log(`Everything checks out${warnings ? ` (${warnings} warning${warnings === 1 ? '' : 's'})` : ''}.`);
-  console.log('If Google sign-in still fails, the browser console will now show the specific reason.\n');
+  console.log('Start the apps with `npm run dev`, then sign up at http://localhost:5173/register\n');
 };
 
 main().catch((err) => {

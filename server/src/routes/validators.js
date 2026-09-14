@@ -50,13 +50,56 @@ module.exports = {
   productBody,
   shippingAddressBody,
 
-  googleLogin: [
-    body('credential')
-      .isString()
-      .withMessage('Google credential is required')
-      .bail()
+  register: [
+    body('name').trim().notEmpty().withMessage('Your name is required').isLength({ max: 120 }),
+    body('email')
+      .trim()
       .notEmpty()
-      .withMessage('Google credential is required'),
+      .withMessage('Email is required')
+      .bail()
+      .isEmail()
+      .withMessage('Enter a valid email address')
+      .bail()
+      .isLength({ max: 254 })
+      .normalizeEmail({ gmail_remove_dots: false }),
+    body('password')
+      .isString()
+      .withMessage('A password is required')
+      .bail()
+      .isLength({ min: 8, max: 128 })
+      .withMessage('Password must be at least 8 characters')
+      .bail()
+      .custom((value) => !/^\d+$/.test(value))
+      .withMessage('Password cannot be only numbers')
+      .bail()
+      .custom((value, { req }) => !value.toLowerCase().includes(String(req.body.email || '').split('@')[0].toLowerCase()))
+      .withMessage('Password must not contain your email address'),
+  ],
+
+  login: [
+    body('email').trim().notEmpty().withMessage('Email is required').bail().isEmail().withMessage('Enter a valid email address'),
+    body('password').isString().notEmpty().withMessage('Password is required'),
+  ],
+
+  verifyEmail: [
+    body('email').trim().isEmail().withMessage('Enter a valid email address'),
+    body('code')
+      .trim()
+      .matches(/^\d{4}$/)
+      .withMessage('Enter the 4-digit code from your email'),
+  ],
+
+  resendCode: [body('email').trim().isEmail().withMessage('Enter a valid email address')],
+
+  changePassword: [
+    body('currentPassword').isString().notEmpty().withMessage('Your current password is required'),
+    body('newPassword')
+      .isString()
+      .isLength({ min: 8, max: 128 })
+      .withMessage('New password must be at least 8 characters')
+      .bail()
+      .custom((value) => !/^\d+$/.test(value))
+      .withMessage('Password cannot be only numbers'),
   ],
 
   updateProfile: [

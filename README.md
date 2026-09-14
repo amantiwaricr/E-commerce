@@ -1,8 +1,9 @@
 # Fresh Meat Nepal
 
 A full-stack MERN e-commerce platform for selling fresh and processed meat in Nepal —
-Google-only sign-in, eSewa / card / cash-on-delivery payments, order tracking, an admin
-panel, and automated email + WhatsApp order notifications.
+email + password accounts verified by a 4-digit emailed code, eSewa / card /
+cash-on-delivery payments, order tracking, an admin panel, and automated email +
+WhatsApp order notifications.
 
 ```
 .
@@ -138,24 +139,39 @@ That route is mounted only when `ENABLE_DEV_LOGIN=true` **and** `NODE_ENV` is no
 returns 404. Re-run `npm run setup` with a real client ID to switch it off and
 use Google properly.
 
-## 4. Google sign-in setup
+## 4. Accounts and email verification
 
-1. Open the [Google Cloud Console](https://console.cloud.google.com/) → create or pick a project.
-2. **APIs & Services → OAuth consent screen** → configure it (External is fine) and add your
-   own Google account as a test user while the app is unpublished.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application.**
-4. Add **Authorised JavaScript origins**:
-   - `http://localhost:5173` (development)
-   - `https://your-domain.com` (production)
-   No redirect URI is needed — the frontend uses Google Identity Services, which returns the
-   ID token straight to the page.
-5. Copy the client ID into `GOOGLE_CLIENT_ID` (server) and `VITE_GOOGLE_CLIENT_ID` (client).
+There is no third-party sign-in. A customer registers with their own email address
+and a password of their choosing, and the account stays inactive until they enter a
+4-digit code sent to that address — which is what proves the address is real.
 
-The backend verifies every ID token with `google-auth-library` against that same client ID,
-then issues its own JWT (returned in the response body and set as an `httpOnly` cookie).
-There is no email/password path — Google is the only way in.
+**The flow**
 
----
+1. `POST /api/auth/register` creates the account with `isEmailVerified: false`,
+   hashes the password with bcrypt, and emails a 4-digit code.
+2. Signing in before verifying is refused with `403` and a flag the UI uses to
+   open the code screen rather than dead-ending.
+3. `POST /api/auth/verify-email` checks the code, activates the account and
+   issues the session in one step, so the customer is signed in immediately.
+4. `POST /api/auth/resend-code` issues a new code, no more than once a minute.
+
+**How the code is protected.** Four digits is only 10,000 possibilities, so the
+code is never the only defence: it is stored bcrypt-hashed (never in plain text),
+expires after 10 minutes, is invalidated after 5 wrong attempts, is single-use,
+and the endpoints are rate-limited per IP on top of the per-account attempt cap.
+
+**Password rules.** At least 8 characters, not all digits, and not built from the
+email name. Stored as a bcrypt hash with `select: false`, so it is excluded from
+queries by default and can never be serialised into a response by accident.
+
+**Without SMTP configured**, codes cannot be emailed — so outside production the
+code is printed in the server terminal and shown on the verification screen,
+which keeps local development usable. This never happens when `NODE_ENV=production`,
+and never when SMTP is configured; there are tests for both.
+
+**The admin account** is created by `npm run seed` with `SEED_ADMIN_PASSWORD`
+(or a generated password printed once), pre-verified, and signs in at the admin
+panel with the same email and password.
 
 ## 5. eSewa setup (payments)
 
@@ -334,7 +350,9 @@ The suites cover the critical flows:
 
 | File | Covers |
 |---|---|
-| `tests/auth.test.js` | Google sign-in, account creation, session cookies, blocked accounts, RBAC |
+| `tests/auth.test.js` | Registration, verification, attempt limits, expiry, resend throttling, sign-in, RBAC |
+| `tests/authvalidation.test.js` | Email and password rules, code format (no database needed) |
+| `tests/otp.test.js` | Code generation, hashing, expiry, cooldown, and that codes are never echoed in production |
 | `tests/order.test.js` | Cart pricing, checkout, stock reservation, cancellation, status transitions |
 | `tests/payment.test.js` | eSewa callbacks, status verification, amount tampering, idempotency, retries |
 | `tests/esewa.test.js` | Signature generation and callback signature verification |
@@ -376,7 +394,11 @@ Every response is JSON. Errors come back as
 ### Auth
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/auth/google` | Public | Exchange a Google ID token for a session |
+| POST | `/api/auth/register` | Public | Create an account and send a verification code |
+| POST | `/api/auth/verify-email` | Public | Confirm the 4-digit code; activates the account and signs in |
+| POST | `/api/auth/resend-code` | Public | Send a new code (once per minute) |
+| POST | `/api/auth/login` | Public | Sign in; refuses unverified accounts with `403` |
+| POST | `/api/auth/change-password` | Customer | Change password, current one required |
 | GET | `/api/auth/me` | Customer | Current user |
 | PATCH | `/api/auth/me` | Customer | Update phone / saved addresses |
 | POST | `/api/auth/logout` | Public | Clear the session cookie |
@@ -442,8 +464,10 @@ Every response is JSON. Errors come back as
 
 ## 12. Data model
 
-**User** — `name`, `email` (unique, indexed), `googleId` (unique, indexed), `avatar`,
-`role` (`customer` \| `admin`), `phone`, `addresses[]`, `isBlocked`, `lastLoginAt`, timestamps.
+**User** — `name`, `email` (unique, indexed), `passwordHash` (bcrypt, `select: false`),
+`isEmailVerified`, `emailVerification{ codeHash, expiresAt, attempts, lastSentAt }`
+(all `select: false`), `avatar`, `role` (`customer` \| `admin`), `phone`,
+`addresses[]`, `favourites[]`, `isBlocked`, `lastLoginAt`, timestamps.
 
 **Product** — `name`, `slug` (unique, indexed), `description`, `category`, `price`, `unit`,
 `stock`, `images[]`, `isAvailable`, `tags[]`, `rating`, `reviewCount`, `isFeatured`, timestamps.
@@ -466,7 +490,9 @@ Order statuses move `pending → confirmed → processing → shipped → delive
 
 ## 13. Security notes
 
-- Google ID tokens are verified server-side against the configured client ID on every sign-in.
+- Passwords are bcrypt-hashed (cost 12) and the hash is never selected into a response.
+- A sign-in failure gives one message for a wrong password and an unknown address, so
+  responses cannot be used to discover which addresses are registered.
 - Sessions are JWTs delivered in an `httpOnly`, `sameSite` cookie (a `Bearer` header also works).
 - All request bodies, params and queries are stripped of MongoDB operator keys before use.
 - Every write endpoint is validated with `express-validator`; prices and totals are always

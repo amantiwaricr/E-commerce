@@ -10,6 +10,8 @@ import FavouritesPage from './pages/FavouritesPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import CheckoutPage from './pages/CheckoutPage';
 import PaymentFailedPage from './pages/PaymentFailedPage';
 import OrdersPage from './pages/OrdersPage';
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="/favourites" element={<FavouritesPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify" element={<VerifyEmailPage />} />
           <Route path="/checkout/failed" element={<PaymentFailedPage />} />
 
           <Route element={<ProtectedRoute />}>

@@ -118,6 +118,38 @@ const orderConfirmationWhatsApp = (order) =>
     `Track: ${trackingUrl(order)}`,
   ].join('\n');
 
+/** The one-time code that proves a new customer owns their email address. */
+const verificationEmail = ({ name, code, ttlMinutes }) => {
+  const html = `
+  <div style="font-family:Segoe UI,Roboto,Arial,sans-serif;background:#f6f6f6;padding:24px;">
+    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;">
+      <div style="background:#14200a;color:#8cc63f;padding:22px 24px;">
+        <h1 style="margin:0;font-size:20px;color:#fff;">${escapeHtml(env.store.name)}</h1>
+      </div>
+      <div style="padding:26px 24px;color:#222;">
+        <p style="margin-top:0;">Namaste ${escapeHtml(name || 'there')},</p>
+        <p>Use this code to confirm your email address and finish creating your account:</p>
+        <p style="font-size:38px;font-weight:800;letter-spacing:12px;text-align:center;
+                  margin:26px 0;color:#14200a;">${escapeHtml(code)}</p>
+        <p style="color:#666;font-size:14px;">
+          The code expires in ${ttlMinutes} minutes. If you did not sign up at ${escapeHtml(env.store.name)},
+          you can ignore this email — no account will be activated.
+        </p>
+      </div>
+    </div>
+  </div>`;
+
+  return {
+    subject: `${code} is your ${env.store.name} verification code`,
+    html,
+    text: [
+      `Your ${env.store.name} verification code is ${code}.`,
+      `It expires in ${ttlMinutes} minutes.`,
+      'If you did not sign up, you can ignore this email.',
+    ].join('\n'),
+  };
+};
+
 /** Status-change email sent whenever an admin advances an order. */
 const orderStatusEmail = (order, note = '') => {
   const html = `
@@ -159,6 +191,7 @@ const orderStatusWhatsApp = (order, note = '') =>
 
 module.exports = {
   PAYMENT_METHOD_LABELS,
+  verificationEmail,
   trackingUrl,
   escapeHtml,
   orderConfirmationEmail,

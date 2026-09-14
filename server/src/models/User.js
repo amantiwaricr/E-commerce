@@ -1,6 +1,9 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const PASSWORD_ROUNDS = 12;
 
 const addressSchema = new mongoose.Schema(
   {
@@ -26,7 +29,17 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    googleId: { type: String, required: true, unique: true, index: true },
+    // Never stores a plain password; `select: false` keeps the hash out of
+    // ordinary queries so it cannot leak through a response by accident.
+    passwordHash: { type: String, required: true, select: false },
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerification: {
+      // The 4-digit code is stored hashed, like a password.
+      codeHash: { type: String, select: false },
+      expiresAt: { type: Date, select: false },
+      attempts: { type: Number, default: 0, select: false },
+      lastSentAt: { type: Date, select: false },
+    },
     avatar: { type: String, trim: true, default: '' },
     role: { type: String, enum: ['customer', 'admin'], default: 'customer', index: true },
     phone: { type: String, trim: true, maxlength: 20, default: '' },
@@ -38,6 +51,20 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/** Hashes and stores a new password. */
+userSchema.methods.setPassword = async function setPassword(plain) {
+  this.passwordHash = await bcrypt.hash(plain, PASSWORD_ROUNDS);
+};
+
+/**
+ * Constant-time password check. Returns false rather than throwing when the
+ * hash was not selected, so a caller cannot mistake a bug for a valid login.
+ */
+userSchema.methods.verifyPassword = async function verifyPassword(plain) {
+  if (!this.passwordHash || !plain) return false;
+  return bcrypt.compare(plain, this.passwordHash);
+};
+
 userSchema.methods.toPublicJSON = function toPublicJSON() {
   return {
     id: this._id.toString(),
@@ -46,6 +73,7 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     avatar: this.avatar,
     role: this.role,
     phone: this.phone,
+    isEmailVerified: this.isEmailVerified,
     addresses: this.addresses,
     favourites: (this.favourites || []).map((id) => id.toString()),
     isBlocked: this.isBlocked,

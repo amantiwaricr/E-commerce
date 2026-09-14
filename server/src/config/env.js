@@ -41,10 +41,6 @@ const env = {
   googleConfigured:
     (process.env.GOOGLE_CLIENT_ID || '').endsWith('.apps.googleusercontent.com') &&
     !(process.env.GOOGLE_CLIENT_ID || '').startsWith('your-'),
-  // Local-only escape hatch: lets you use the app before Google OAuth is set up.
-  // Requires an explicit opt-in AND a non-production NODE_ENV — the route is not
-  // even mounted otherwise, so it cannot be reached on a deployed instance.
-  devLoginEnabled: !isProduction && bool(process.env.ENABLE_DEV_LOGIN, false),
   jwtSecret: process.env.JWT_SECRET || (isProduction ? '' : 'dev-only-insecure-secret'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   cookie: {
@@ -79,6 +75,9 @@ const env = {
     fromAddress: process.env.MAIL_FROM_ADDRESS || process.env.SMTP_USER || '',
   },
 
+  // True only when a real SMTP transport can be built.
+  mailConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD),
+
   whatsapp: {
     provider: (process.env.WHATSAPP_PROVIDER || 'none').toLowerCase(),
     meta: {
@@ -105,6 +104,7 @@ const env = {
   seed: {
     adminEmail: process.env.SEED_ADMIN_EMAIL || 'admin@freshmeatnepal.com',
     adminName: process.env.SEED_ADMIN_NAME || 'Store Admin',
+    adminPassword: process.env.SEED_ADMIN_PASSWORD || '',
   },
 };
 

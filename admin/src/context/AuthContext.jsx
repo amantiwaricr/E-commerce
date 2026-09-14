@@ -21,16 +21,8 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential) => {
-    const { data } = await api.post('/auth/google', { credential });
-    setToken(data.token);
-    setUser(data.user);
-    return data.user;
-  }, []);
-
-  /** Development-only sign-in; the endpoint does not exist in production. */
-  const loginAsDev = useCallback(async () => {
-    const { data } = await api.post('/auth/dev-login');
+  const login = useCallback(async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password });
     setToken(data.token);
     setUser(data.user);
     return data.user;
@@ -52,11 +44,10 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: Boolean(user),
       // This whole app is admin-only: a signed-in customer is still refused.
       isAdmin: user?.role === 'admin',
-      loginWithGoogle,
-      loginAsDev,
+      login,
       logout,
     }),
-    [user, loading, loginWithGoogle, loginAsDev, logout]
+    [user, loading, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -6,16 +6,22 @@ const { signToken } = require('../../src/middleware/auth');
 
 let counter = 0;
 
+const DEFAULT_PASSWORD = 'test-password-123';
+
 const createUser = async (overrides = {}) => {
   counter += 1;
-  return User.create({
+  const { password = DEFAULT_PASSWORD, ...rest } = overrides;
+  const user = new User({
     name: `Test Customer ${counter}`,
     email: `customer${counter}@example.com`,
-    googleId: `google-sub-${counter}`,
     role: 'customer',
     phone: '9801234567',
-    ...overrides,
+    isEmailVerified: true,
+    ...rest,
   });
+  await user.setPassword(password);
+  await user.save();
+  return user;
 };
 
 const createAdmin = (overrides = {}) => createUser({ role: 'admin', ...overrides });
@@ -47,4 +53,4 @@ const shippingAddress = (overrides = {}) => ({
   ...overrides,
 });
 
-module.exports = { createUser, createAdmin, createProduct, authHeader, shippingAddress };
+module.exports = { createUser, createAdmin, createProduct, authHeader, shippingAddress, DEFAULT_PASSWORD };

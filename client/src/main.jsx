@@ -1,10 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-
 import App from './App';
-import { GOOGLE_CLIENT_ID } from './config';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { FavouritesProvider } from './context/FavouritesContext';
@@ -14,8 +11,7 @@ import './home.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <BrowserRouter>
+    <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
             <FavouritesProvider>
@@ -26,6 +22,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </AuthProvider>
         </ToastProvider>
       </BrowserRouter>
-    </GoogleOAuthProvider>
   </React.StrictMode>
 );

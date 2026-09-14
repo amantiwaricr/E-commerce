@@ -137,33 +137,6 @@ describe('notification templates', () => {
   });
 });
 
-describe('Google sign-in failure messages', () => {
-  const { __describeVerificationFailure: describe_ } = require('../src/controllers/auth.controller');
-
-  it('names a client ID mismatch, the most common misconfiguration', () => {
-    const message = describe_('Wrong recipient, payload audience != requiredAudience');
-    expect(message).toMatch(/does not match GOOGLE_CLIENT_ID/i);
-    expect(message).toMatch(/npm run doctor/);
-  });
-
-  it('explains an expired token', () => {
-    expect(describe_('Token used too late, 1700000000 > 1699999999')).toMatch(/expired/i);
-  });
-
-  it('explains a clock skew', () => {
-    expect(describe_('Token used too early')).toMatch(/clock/i);
-  });
-
-  it('explains a malformed or forged token', () => {
-    expect(describe_('Wrong number of segments in token')).toMatch(/could not be verified/i);
-    expect(describe_('Invalid token signature')).toMatch(/could not be verified/i);
-  });
-
-  it('falls back to a generic message for anything unrecognised', () => {
-    expect(describe_('some brand new google error')).toBe('Google sign-in failed. Please try again.');
-  });
-});
-
 describe('order status machine', () => {
   it('only allows forward moves or cancellation', () => {
     expect(ORDER_STATUS_TRANSITIONS.pending).toEqual(['confirmed', 'cancelled']);
