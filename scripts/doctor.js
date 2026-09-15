@@ -12,6 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const net = require('net');
 const http = require('http');
+const https = require('https');
+const tls = require('tls');
 
 const ROOT = path.resolve(__dirname, '..');
 let failures = 0;
@@ -44,6 +46,30 @@ const portOpen = (host, port) =>
     socket.on('connect', () => done(true));
     socket.on('timeout', () => done(false));
     socket.on('error', () => done(false));
+  });
+
+/**
+ * Opens a TLS connection and reports the negotiated protocol, or null when the
+ * port is not speaking TLS at all. The certificate is not trusted in
+ * development, so verification is deliberately off — this asks "is this TLS?",
+ * not "is this certificate valid?".
+ */
+const tlsProbe = (host, port) =>
+  new Promise((resolve) => {
+    const socket = tls.connect({ host, port, rejectUnauthorized: false, servername: 'localhost' }, () => {
+      const cert = socket.getPeerCertificate();
+      resolve({
+        protocol: socket.getProtocol(),
+        issuer: cert?.issuer?.O || cert?.issuer?.CN || '',
+        subject: cert?.subject?.CN || '',
+        selfSigned: Boolean(cert?.issuer && cert?.subject && cert.issuer.CN === cert.subject.CN),
+        validTo: cert?.valid_to || '',
+      });
+      socket.end();
+    });
+    socket.setTimeout(2500);
+    socket.on('timeout', () => { socket.destroy(); resolve(null); });
+    socket.on('error', () => resolve(null));
   });
 
 const httpJson = (url) =>
@@ -147,6 +173,45 @@ const main = async () => {
   } else if (apiPort) {
     ok('client VITE_API_URL points at the API port', apiUrl);
   }
+
+  console.log('\nTLS');
+  const sslKey = server.SSL_KEY_PATH || '';
+  const sslCert = server.SSL_CERT_PATH || '';
+  const forceHttps = String(server.FORCE_HTTPS || '').toLowerCase();
+
+  if (apiUp) {
+    const handshake = await tlsProbe('127.0.0.1', port);
+    if (handshake) {
+      ok(`API is serving HTTPS on port ${port}`, `${handshake.protocol}${handshake.validTo ? `, certificate valid to ${handshake.validTo}` : ''}`);
+      if (handshake.selfSigned) {
+        warn('the certificate is self-signed, so browsers will warn',
+             'Expected for local development. Production certificates come from a CA (Let\'s Encrypt is free).');
+      }
+      if (!/^https:/.test(client.VITE_API_URL || '')) {
+        bad('the API speaks HTTPS but client/.env still points at http://',
+            `Set VITE_API_URL=https://localhost:${port}/api in client/.env and admin/.env, then restart.`);
+      }
+      if (!/^https:/.test(server.BACKEND_URL || '')) {
+        warn('BACKEND_URL is still http:// — eSewa callbacks would come back over plain HTTP',
+             `Set BACKEND_URL=https://localhost:${port} in server/.env.`);
+      }
+    } else if (sslKey || sslCert) {
+      bad('SSL_KEY_PATH/SSL_CERT_PATH are set but the API is still on plain HTTP',
+          'Both must be set and point at files that exist. Run `npm run ssl:dev --prefix server`, then restart the server.');
+    } else {
+      ok('API is serving plain HTTP', 'the default — TLS is expected to terminate at a proxy in production');
+    }
+  } else {
+    warn('cannot check TLS while the API is down');
+  }
+
+  if (!sslKey && !sslCert) {
+    console.log('      → To run the API over HTTPS locally: `npm run ssl:dev --prefix server`, then follow what it prints.');
+  }
+  if (forceHttps === 'true') {
+    ok('FORCE_HTTPS=true — plain HTTP will be redirected and HSTS sent');
+  }
+  ok('outbound TLS floor', `${server.TLS_MIN_VERSION || 'TLSv1.2'} (eSewa, SMTP, MongoDB)`);
 
   const mongoMatch = (server.MONGODB_URI || '').match(/\/\/([^:/]+):(\d+)/);
   if (mongoMatch) {

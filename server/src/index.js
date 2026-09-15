@@ -3,6 +3,7 @@
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
+const path = require('path');
 
 const { env, validateEnv } = require('./config/env');
 const { connectDB } = require('./config/db');
@@ -19,14 +20,26 @@ const createServer = (app) => {
   const { keyPath, certPath, minVersion } = env.https;
   if (!keyPath || !certPath) return http.createServer(app);
 
+  // Resolved against the server package, not the working directory: `npm run
+  // dev` from the repo root would otherwise look in the wrong place.
+  const serverRoot = path.resolve(__dirname, '..');
+  const resolve = (file) => (path.isAbsolute(file) ? file : path.resolve(serverRoot, file));
+
+  const files = {};
   for (const [label, file] of [['SSL_KEY_PATH', keyPath], ['SSL_CERT_PATH', certPath]]) {
-    if (!fs.existsSync(file)) {
-      throw new Error(`${label} points at ${file}, which does not exist. Run: npm run ssl:dev`);
+    const full = resolve(file);
+    if (!fs.existsSync(full)) {
+      throw new Error(`${label} points at ${full}, which does not exist. Run: npm run ssl:dev`);
     }
+    files[label] = full;
   }
 
   return https.createServer(
-    { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath), minVersion },
+    {
+      key: fs.readFileSync(files.SSL_KEY_PATH),
+      cert: fs.readFileSync(files.SSL_CERT_PATH),
+      minVersion,
+    },
     app
   );
 };

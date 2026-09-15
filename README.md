@@ -690,6 +690,11 @@ TLS normally terminates in front of this process (nginx, Render, Fly), which is 
 `X-Forwarded-Proto`. To serve TLS from Node instead, set `SSL_KEY_PATH` and
 `SSL_CERT_PATH`.
 
+**Is it on?** `npm run doctor` says so directly — it opens a TLS connection to the API
+and reports the protocol it negotiated, whether the certificate is self-signed, and
+whether `VITE_API_URL` and `BACKEND_URL` still point at `http://` while the server has
+moved to HTTPS.
+
 **Local HTTPS.** `npm run ssl:dev --prefix server` writes a self-signed certificate to
 `server/certs/` (gitignored) and prints the settings to paste into `server/.env`. Use it to
 exercise the things that only happen over HTTPS — `COOKIE_SECURE=true`, the redirect,
