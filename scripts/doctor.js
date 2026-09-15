@@ -15,6 +15,8 @@ const http = require('http');
 const https = require('https');
 const tls = require('tls');
 
+const { readEnvFile, looksUnreadable } = require('./env-file');
+
 const ROOT = path.resolve(__dirname, '..');
 let failures = 0;
 let warnings = 0;
@@ -23,16 +25,18 @@ const ok = (m, detail) => console.log(`  ✓ ${m}${detail ? `  ${detail}` : ''}`
 const bad = (m, fix) => { failures += 1; console.log(`  ✗ ${m}`); if (fix) console.log(`      → ${fix}`); };
 const warn = (m, fix) => { warnings += 1; console.log(`  ! ${m}`); if (fix) console.log(`      → ${fix}`); };
 
-/** Parses KEY=value lines; returns null when the file is absent. */
+/**
+ * Parses KEY=value lines; returns null when the file is absent.
+ *
+ * Encodings are handled in env-file.js — a UTF-16 or BOM-prefixed file parses
+ * as completely empty otherwise, which is the confusing state this whole
+ * script exists to explain.
+ */
+const envFiles = {};
 const readEnv = (file) => {
-  const full = path.join(ROOT, file);
-  if (!fs.existsSync(full)) return null;
-  const out = {};
-  fs.readFileSync(full, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
-    if (m) out[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
-  });
-  return out;
+  const parsed = readEnvFile(path.join(ROOT, file));
+  envFiles[file] = parsed;
+  return parsed ? parsed.values : null;
 };
 
 /** Never print a full credential; enough to compare by eye. */
@@ -102,6 +106,25 @@ const main = async () => {
 
   if (!server || !client) {
     console.log('\nFix the missing files first, then run `npm run doctor` again.\n');
+    process.exit(1);
+  }
+
+  /*
+   * This script can decode UTF-16 and BOMs; dotenv and Vite cannot. So a file
+   * that reads perfectly here may still be invisible to the running app, which
+   * then falls back to its defaults — and in development the defaults work,
+   * so nothing looks wrong until a real value is needed.
+   */
+  const misencoded = ['server/.env', 'client/.env', 'admin/.env'].filter(
+    (f) => envFiles[f] && envFiles[f].encoding !== 'utf-8'
+  );
+  if (misencoded.length) {
+    misencoded.forEach((f) => {
+      bad(`${f} is ${envFiles[f].encoding}, not plain UTF-8 — dotenv and Vite read it as empty`,
+          'Usually PowerShell `>` (writes UTF-16) or Notepad saving "UTF-8" with a BOM. ' +
+          'The app has been running on its built-in defaults, ignoring this file.');
+    });
+    console.log('\n  Run `npm run setup` — it rewrites these as plain UTF-8 and keeps your values.\n');
     process.exit(1);
   }
 

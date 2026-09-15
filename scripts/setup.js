@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { normaliseEncoding } = require('./env-file');
 
 const ROOT = path.resolve(__dirname, '..');
 const SERVER_ENV = path.join(ROOT, 'server', '.env');
@@ -96,6 +97,18 @@ const main = async () => {
     ensureEnvFile(ADMIN_ENV) && 'admin/.env',
   ].filter(Boolean);
   created.forEach((file) => console.log(`✓ created ${file} from its example`));
+
+  /*
+   * Encoding first, before anything reads or appends. PowerShell's `>` writes
+   * UTF-16 and Notepad's "UTF-8" adds a BOM; either makes every line
+   * unparseable to this script, to dotenv and to Vite, so the file looks
+   * empty. Left unrepaired, the backfill below would append UTF-8 text to a
+   * UTF-16 file and leave it worse than it found it.
+   */
+  [[SERVER_ENV, 'server/.env'], [CLIENT_ENV, 'client/.env'], [ADMIN_ENV, 'admin/.env']].forEach(([file, label]) => {
+    const was = normaliseEncoding(file);
+    if (was) console.log(`✓ ${label}: rewritten as UTF-8 (it was ${was}, which nothing could read)`);
+  });
 
   // Repair files that exist but are missing keys.
   [[SERVER_ENV, 'server/.env'], [CLIENT_ENV, 'client/.env'], [ADMIN_ENV, 'admin/.env']].forEach(([file, label]) => {

@@ -89,6 +89,14 @@ To configure by hand instead, follow the two sections below.
 
 ### Something not working?
 
+> **Windows:** create and edit `.env` with an editor that saves **UTF-8 without a
+> BOM** (VS Code does by default). PowerShell's `>` redirection writes UTF-16 and
+> Notepad's "UTF-8" adds a BOM — neither can be read by `dotenv` or Vite, so the
+> file is silently ignored and the app falls back to its built-in defaults, which
+> work in development. `npm run doctor` names this exactly, and `npm run setup`
+> rewrites the file as UTF-8 while keeping your values.
+
+
 ```bash
 npm run doctor
 ```
