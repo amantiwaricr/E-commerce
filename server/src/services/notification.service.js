@@ -5,6 +5,7 @@ const { env } = require('../config/env');
 const { sendMail } = require('./email.service');
 const { sendWhatsApp } = require('./whatsapp.service');
 const templates = require('./templates');
+const invoiceService = require('./invoice.service');
 const logger = require('../utils/logger');
 
 /**
@@ -70,24 +71,58 @@ const shouldEmailStatus = (status) =>
   env.notifications.statusEmails.includes(String(status || '').toLowerCase());
 
 /**
- * Notifies the customer that their order moved to a new status.
+ * The bill, ready to attach. Only a delivered order has one, and a failure to
+ * render it must not hold up the email — the customer would rather hear that
+ * their order arrived, with a link to the bill, than hear nothing at all.
+ */
+const invoiceAttachment = async (order, user) => {
+  if (order.orderStatus !== 'delivered') return null;
+  try {
+    const invoice = invoiceService.buildInvoice(order, user);
+    const content = await invoiceService.renderInvoicePdf(invoice);
+    return { filename: `${invoice.invoiceNumber}.pdf`, content, contentType: 'application/pdf' };
+  } catch (err) {
+    logger.error(`Could not attach the bill for ${order.orderNumber}: ${err.message}`);
+    return null;
+  }
+};
+
+/**
+ * Notifies the customer that their order moved to a new status. The delivery
+ * email carries the bill as a PDF.
  *
  * WhatsApp is not filtered: it is the channel for the running commentary, and
  * the email is reserved for the moments that matter.
  */
 const sendOrderStatusUpdate = async (order, user, note = '') => {
   const payload = toTemplateOrder(order, user);
-  const mail = templates.orderStatusEmail(payload, note);
   const wanted = shouldEmailStatus(order.orderStatus);
+
+  // Only built when an email is actually going out — rendering a PDF nobody
+  // will receive is pure waste.
+  const bill = wanted ? await invoiceAttachment(order, user) : null;
+  const mail = templates.orderStatusEmail(payload, note, { billAttached: Boolean(bill) });
 
   const [email, whatsapp] = await Promise.all([
     wanted
-      ? sendMail({ to: user?.email, subject: mail.subject, html: mail.html, text: mail.text })
+      ? sendMail({
+          to: user?.email,
+          subject: mail.subject,
+          html: mail.html,
+          text: mail.text,
+          attachments: bill ? [bill] : undefined,
+        })
       : Promise.resolve({ sent: false, skipped: true, reason: `no email is sent for "${order.orderStatus}"` }),
     sendWhatsApp({ to: order.shippingAddress?.phone || user?.phone, body: templates.orderStatusWhatsApp(payload, note) }),
   ]);
 
-  return { email, whatsapp };
+  return { email, whatsapp, billAttached: Boolean(bill) };
 };
 
-module.exports = { sendOrderConfirmation, sendOrderStatusUpdate, toTemplateOrder, shouldEmailStatus };
+module.exports = {
+  sendOrderConfirmation,
+  sendOrderStatusUpdate,
+  toTemplateOrder,
+  shouldEmailStatus,
+  invoiceAttachment,
+};

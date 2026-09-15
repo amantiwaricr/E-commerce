@@ -30,7 +30,7 @@ const getTransporter = () => {
  * Sends a transactional email. Never throws: notification failures must not
  * roll back an order that has already been paid for.
  */
-const sendMail = async ({ to, subject, html, text }) => {
+const sendMail = async ({ to, subject, html, text, attachments }) => {
   if (!to) return { sent: false, skipped: true, reason: 'no recipient' };
 
   const tx = getTransporter();
@@ -46,8 +46,11 @@ const sendMail = async ({ to, subject, html, text }) => {
       subject,
       html,
       text,
+      ...(attachments?.length ? { attachments } : {}),
     });
-    logger.info(`Email sent to ${to} (${info.messageId})`);
+    logger.info(
+      `Email sent to ${to} (${info.messageId})${attachments?.length ? ` with ${attachments.length} attachment(s)` : ''}`
+    );
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     logger.error(`Failed to send email to ${to}:`, err.message);

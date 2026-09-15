@@ -151,7 +151,11 @@ const verificationEmail = ({ name, code, ttlMinutes }) => {
 };
 
 /** Status-change email sent whenever an admin advances an order. */
-const orderStatusEmail = (order, note = '') => {
+/**
+ * `billAttached` is set by the notification service when the PDF made it onto
+ * the message — the copy must not promise an attachment that is not there.
+ */
+const orderStatusEmail = (order, note = '', { billAttached = false } = {}) => {
   const html = `
   <div style="font-family:Segoe UI,Roboto,Arial,sans-serif;background:#f6f6f6;padding:24px;">
     <div style="max-width:620px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;color:#222;">
@@ -166,6 +170,13 @@ const orderStatusEmail = (order, note = '') => {
             )})</p>`
           : ''
       }
+      ${
+        billAttached
+          ? '<p style="background:#fef7f6;border-radius:10px;padding:12px 14px;margin:16px 0;">' +
+            '📄 <strong>Your bill is attached to this email</strong> as a PDF. ' +
+            'You can also download it any time from <em>My orders</em>.</p>'
+          : ''
+      }
       <p><a href="${trackingUrl(order)}" style="color:#b3202c;">View order details</a></p>
     </div>
   </div>`;
@@ -173,9 +184,10 @@ const orderStatusEmail = (order, note = '') => {
   return {
     subject: `${env.store.name} — order ${order.orderNumber} is ${order.orderStatus}`,
     html,
-    text: `Order ${order.orderNumber} is now ${order.orderStatus}.${note ? ` ${note}` : ''}\nTrack: ${trackingUrl(
-      order
-    )}`,
+    text:
+      `Order ${order.orderNumber} is now ${order.orderStatus}.${note ? ` ${note}` : ''}\n` +
+      `${billAttached ? 'Your bill is attached to this email as a PDF.\n' : ''}` +
+      `Track: ${trackingUrl(order)}`,
   };
 };
 

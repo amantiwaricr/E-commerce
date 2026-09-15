@@ -651,6 +651,11 @@ subtotal, so a figure that ever drifted cannot print a bill that does not add up
 invoice number is derived from the order number (`FMN-2026-00184` → `INV-2026-00184`),
 so one order can only ever produce one bill number.
 
+The delivery email carries the same PDF as an attachment, and says so in its body.
+It is rendered only when that email is actually going out, and a failure to render it
+never holds up the message — the customer would rather hear that their order arrived,
+with a link to the bill, than hear nothing at all.
+
 The shop's own details on the bill come from `STORE_ADDRESS`, `STORE_SUPPORT_EMAIL` and
 `STORE_SUPPORT_PHONE`. `STORE_REGISTRATION_NUMBER` is printed only if set — left empty,
 the bill says the shop is not VAT registered rather than inventing a tax breakdown.
