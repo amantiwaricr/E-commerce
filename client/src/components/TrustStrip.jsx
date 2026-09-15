@@ -5,7 +5,7 @@ import { LeafIcon, ShieldIcon, SnowIcon, TruckIcon } from './icons';
  * the cart and the basket summary.
  */
 const POINTS = [
-  { Icon: ShieldIcon, title: '100% Halal', note: 'Slaughtered to halal standards' },
+  { Icon: ShieldIcon, title: '100% Fresh', note: 'Cut the morning you buy it' },
   { Icon: LeafIcon, title: 'Cut Fresh Daily', note: 'No preservatives added' },
   { Icon: SnowIcon, title: 'Cold Chain', note: 'Kept at 0–4°C throughout' },
   { Icon: TruckIcon, title: 'Same-Day Delivery', note: 'Across the Kathmandu Valley' },

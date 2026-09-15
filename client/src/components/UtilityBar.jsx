@@ -21,7 +21,7 @@ export default function UtilityBar() {
 
         <span className="ub-notch">
           <ShieldIcon width={14} height={14} />
-          100% HALAL CERTIFIED
+          100% FRESH CERTIFIED
         </span>
 
         <span className="ub-item">

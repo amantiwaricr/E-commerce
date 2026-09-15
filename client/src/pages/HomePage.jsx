@@ -17,7 +17,7 @@ import {
 const PROMISES = [
   { Icon: FarmIcon, title: 'Cut To Order', note: 'Same morning' },
   { Icon: SnowIcon, title: 'Cold Chain', note: 'Never re-frozen' },
-  { Icon: ShieldIcon, title: 'Halal Certified', note: '100% Halal' },
+  { Icon: ShieldIcon, title: 'Fresh Certified', note: '100% Fresh' },
 ];
 
 const STEPS = [
@@ -90,7 +90,7 @@ export default function HomePage() {
             </p>
 
             <h1 className="hero-title">
-              <span className="l1">Fresh <em>Halal</em> Meat,</span>
+              <span className="l1">Always <em>Fresh</em> Meat,</span>
               <span className="l2">Cut Daily With <em>Care</em></span>
             </h1>
 

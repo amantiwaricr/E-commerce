@@ -58,7 +58,7 @@ export default function SiteFooter() {
               <Emblem className="emblem" />
               <div>
                 <div className="word">{STORE_NAME}</div>
-                <span className="sub">FRESH · HALAL · NEPAL</span>
+                <span className="sub">FRESH · DAILY · NEPAL</span>
               </div>
             </Link>
             <p>
