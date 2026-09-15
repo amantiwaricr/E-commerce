@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Emblem from '../components/Emblem';
 import ThemeToggle from '../components/ThemeToggle';
+import SiteFooter from '../components/SiteFooter';
 import {
-  ArrowRight, BoxIcon, CartIcon, ClockIcon, FarmIcon, GridIcon, LeafIcon,
-  MailIcon, PhoneIcon, PinIcon, RouteIcon, SearchIcon, ShieldIcon, SnowIcon,
-  StarIcon, UserIcon, WalletIcon,
+  ArrowRight, CartIcon, ClockIcon, FarmIcon, GridIcon, LeafIcon, PhoneIcon,
+  PinIcon, RouteIcon, SearchIcon, ShieldIcon, SnowIcon, StarIcon, UserIcon,
 } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { formatNpr } from '../utils/format';
 import {
-  CATEGORIES, FREE_DELIVERY_THRESHOLD, HERO_IMAGE, STORE_ADDRESS, STORE_DIRECTIONS_LINK,
-  STORE_MAP_EMBED_URL, STORE_MAP_LINK, STORE_NAME, SUPPORT_EMAIL, SUPPORT_PHONE,
+  CATEGORIES, HERO_IMAGE, STORE_ADDRESS, STORE_DIRECTIONS_LINK, STORE_MAP_EMBED_URL,
+  STORE_MAP_LINK, STORE_NAME, SUPPORT_EMAIL, SUPPORT_PHONE,
 } from '../config';
 
 /** Marketing copy for the hero badges — edit these to match the business. */
@@ -21,41 +21,6 @@ const PROMISES = [
   { Icon: FarmIcon, title: 'Cut To Order', note: 'Same morning' },
   { Icon: SnowIcon, title: 'Cold Chain', note: 'Never re-frozen' },
   { Icon: ShieldIcon, title: 'Halal Certified', note: '100% Halal' },
-];
-
-/** Footer link columns — every destination is a route that actually exists. */
-const FOOTER_LINKS = [
-  {
-    title: 'Shop',
-    links: [
-      { label: 'Meat Market', to: '/shop' },
-      ...CATEGORIES.map((name) => ({ label: name, to: `/shop?category=${encodeURIComponent(name)}` })),
-    ],
-  },
-  {
-    title: 'Your account',
-    links: [
-      { label: 'Orders & tracking', to: '/orders' },
-      { label: 'Favourites', to: '/favourites' },
-      { label: 'Basket', to: '/cart' },
-      { label: 'Profile', to: '/profile' },
-    ],
-  },
-  {
-    title: 'Ordering',
-    links: [
-      { label: 'How it works', to: '#how', hash: true },
-      { label: 'Create an account', to: '/register' },
-      { label: 'Sign in', to: '/login' },
-      { label: 'Visit the shop', to: '#visit', hash: true },
-    ],
-  },
-];
-
-const PAYMENT_NOTES = [
-  { Icon: WalletIcon, label: 'eSewa wallet' },
-  { Icon: ShieldIcon, label: 'Debit / credit card' },
-  { Icon: BoxIcon, label: 'Cash on delivery' },
 ];
 
 const STEPS = [
@@ -66,6 +31,7 @@ const STEPS = [
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { addItem } = useCart();
   const { user, isAuthenticated } = useAuth();
 
@@ -82,6 +48,16 @@ export default function HomePage() {
       .then(({ data }) => setFacets(data.facets))
       .catch(() => setFacets(null));
   }, []);
+
+  /*
+   * React Router changes the URL but never scrolls, so a `/#how` link arriving
+   * from another page would land at the top. Re-run once the catalogue has
+   * rendered too: until then the sections below it sit at the wrong offset.
+   */
+  useEffect(() => {
+    if (!hash) return;
+    document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [hash, products.length]);
 
   // Headline figures come from the catalogue, never from invented numbers.
   const stats = useMemo(() => {
@@ -417,85 +393,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="home-footer">
-        <div className="wrap">
-          <div className="foot-top">
-            <div className="foot-brand">
-              <div className="home-brand">
-                <Emblem className="emblem" />
-                <div>
-                  <div className="word">{STORE_NAME}</div>
-                  <span className="sub">FRESH · HALAL · NEPAL</span>
-                </div>
-              </div>
-              <p>
-                Meat cut to order the morning you buy it, kept in an unbroken cold chain from our
-                Balkumari counter to your kitchen anywhere in the Kathmandu Valley.
-              </p>
-
-              <div className="foot-contact">
-                <a href={STORE_MAP_LINK} target="_blank" rel="noreferrer">
-                  <PinIcon width={15} height={15} />
-                  {STORE_ADDRESS.line1}, {STORE_ADDRESS.line2}
-                </a>
-                <a href={`tel:${SUPPORT_PHONE.replace(/[^+\d]/g, '')}`}>
-                  <PhoneIcon width={15} height={15} />
-                  {SUPPORT_PHONE}
-                </a>
-                <a href={`mailto:${SUPPORT_EMAIL}`}>
-                  <MailIcon width={15} height={15} />
-                  {SUPPORT_EMAIL}
-                </a>
-                <span>
-                  <ClockIcon width={15} height={15} />
-                  {STORE_ADDRESS.hours}
-                </span>
-              </div>
-            </div>
-
-            {FOOTER_LINKS.map((column) => (
-              <nav className="foot-col" key={column.title} aria-label={column.title}>
-                <h4>{column.title}</h4>
-                <ul>
-                  {column.links.map((link) => (
-                    <li key={`${column.title}-${link.label}`}>
-                      {link.hash ? (
-                        <a href={link.to}>{link.label}</a>
-                      ) : (
-                        <Link to={link.to}>{link.label}</Link>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ))}
-          </div>
-
-          <div className="foot-pay">
-            <span className="foot-pay-label">We accept</span>
-            {PAYMENT_NOTES.map(({ Icon, label }) => (
-              <span className="pay-chip" key={label}>
-                <Icon width={15} height={15} />
-                {label}
-              </span>
-            ))}
-            <span className="foot-pay-note">
-              Free delivery inside the Valley over {formatNpr(FREE_DELIVERY_THRESHOLD)} · Order before
-              4 PM for same-day delivery
-            </span>
-          </div>
-
-          <div className="foot-bottom">
-            <span>
-              © {new Date().getFullYear()} {STORE_NAME}. All rights reserved.
-            </span>
-            <span>
-              Registered in Lalitpur, Bagmati Province, Nepal · Prices in Nepalese rupees, inclusive
-              of applicable taxes
-            </span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -140,11 +140,11 @@
 }
 
 /* Colour changes are instant; only the switch itself is worth easing. */
-body, .shell, .topbar, .card, .home, .home-footer, .site-footer {
+body, .shell, .topbar, .card, .home, .home-footer {
   transition: background-color .18s ease, color .18s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-  body, .shell, .topbar, .card, .home, .home-footer, .site-footer { transition: none; }
+  body, .shell, .topbar, .card, .home, .home-footer { transition: none; }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -647,7 +647,6 @@ tbody tr:hover { background: var(--row-hover); }
 .toast button { background: none; border: 0; color: inherit; cursor: pointer; opacity: .8; margin-left: auto; }
 @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-.site-footer { padding: 22px var(--gutter); color: var(--ink-3); font-size: .78rem; text-align: center; background: var(--footer-bg); border-top: 1px solid var(--footer-line); }
 
 .filter-toggle { display: none; }
 
@@ -677,7 +676,6 @@ tbody tr:hover { background: var(--row-hover); }
   .cart-line .line-actions { grid-column: 1 / -1; }
   .topbar { padding: 11px 13px; gap: 10px; }
   .shell-body { padding: 0 13px 18px; }
-  .site-footer { padding: 18px 13px; }
 }
 
 /* ── One-time code entry ─────────────────────────────────── */

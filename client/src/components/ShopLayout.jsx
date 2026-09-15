@@ -1,8 +1,8 @@
 import { Outlet } from 'react-router-dom';
 import TopBar from './TopBar';
-import { STORE_NAME } from '../config';
+import SiteFooter from './SiteFooter';
 
-/** The light shop chrome: everything except the dark landing page uses it. */
+/** The shop chrome: everything except the landing page, which brings its own. */
 export default function ShopLayout() {
   return (
     <div className="viewport">
@@ -11,9 +11,7 @@ export default function ShopLayout() {
         <div className="shell-body">
           <Outlet />
         </div>
-        <footer className="site-footer">
-          © {new Date().getFullYear()} {STORE_NAME} · Kathmandu, Nepal · eSewa, card &amp; cash on delivery
-        </footer>
+        <SiteFooter />
       </div>
     </div>
   );

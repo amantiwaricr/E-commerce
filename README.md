@@ -130,7 +130,7 @@ they default to Balkumari, Lalitpur:
 
 | Variable | What it is |
 |---|---|
-| `VITE_STORE_ADDRESS_LINE1` / `_LINE2` | Street and city lines, shown on the landing page and in its footer |
+| `VITE_STORE_ADDRESS_LINE1` / `_LINE2` | Street and city lines, shown on the landing page and in the footer of every page |
 | `VITE_STORE_HOURS` | Opening hours line |
 | `VITE_SUPPORT_PHONE`, `VITE_SUPPORT_EMAIL` | Contact details |
 | `VITE_STORE_MAP_QUERY` | What the embedded map and both directions links point at |
@@ -408,6 +408,12 @@ Both palettes live at the top of `client/src/index.css`: `:root` holds light,
 `[data-theme='dark']` holds dark, and `home.css` reads the same tokens through
 the aliases underneath. No rule below that block names a colour directly, so
 adding a third theme is a matter of one more token set.
+
+The footer itself is one component, `components/SiteFooter.jsx`, rendered by
+`ShopLayout` and by the landing page, so every page of the site carries the
+same one. Its two in-page links (`/#how`, `/#visit`) work from anywhere: the
+landing page scrolls to the section once it has mounted, since React Router
+changes the URL but never scrolls.
 
 In light mode the footer sits on its own grey band (`--footer-bg`), which
 separates it from the white page above and lets its columns read as a block;

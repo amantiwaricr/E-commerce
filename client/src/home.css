@@ -365,6 +365,8 @@
 .map-caption a:hover { color: var(--accent-ink); }
 
 /* ── Footer ──────────────────────────────────────────────── */
+.foot-wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
 .home-footer { background: var(--footer-bg); border-top: 1px solid var(--footer-line); padding: 56px 0 28px; color: var(--paper-3); font-size: .86rem; }
 .home-footer a { color: var(--paper-2); transition: color .12s ease; }
 .home-footer a:hover { color: var(--accent-ink); }
@@ -452,6 +454,7 @@
   .visit-map, .visit-map iframe { min-height: 280px; }
   .foot-top { grid-template-columns: 1fr; gap: 28px; }
   .home-footer { padding: 40px 0 24px; }
+  .foot-wrap { padding: 0 16px; }
   .home .wrap { padding: 0 16px; }
   .hero-stats { gap: 18px; }
   .promise { padding: 9px 13px 9px 9px; }
