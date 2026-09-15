@@ -23,10 +23,9 @@ export default function App() {
   return (
     <>
       <Routes>
-        {/* The landing page brings its own dark chrome. */}
-        <Route path="/" element={<HomePage />} />
-
         <Route element={<ShopLayout />}>
+          {/* The reference carries one header across every page, landing included. */}
+          <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/products/:slug" element={<ProductDetailPage />} />
           <Route path="/favourites" element={<FavouritesPage />} />

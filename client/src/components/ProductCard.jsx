@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HeartIcon, TagIcon } from './icons';
+import { CartIcon, HeartIcon } from './icons';
 import { formatNpr } from '../utils/format';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
@@ -42,25 +42,30 @@ export default function ProductCard({ product }) {
       </button>
 
       <div className="pcard-body">
-        <h3 className="pcard-title truncate" title={product.name}>
+        <span className="pcard-cat">{product.category}</span>
+
+        <h3 className="pcard-title" title={product.name}>
           <Link to={`/products/${product.slug}`}>{product.name}</Link>
         </h3>
 
-        <div className="price-row">
+        <p className="pcard-price">
+          <strong>{formatNpr(product.price)}</strong>
+          <span> / {product.unit}</span>
           {product.compareAtPrice > product.price && (
             <span className="price-was">{formatNpr(product.compareAtPrice)}</span>
           )}
-          <button
-            type="button"
-            className="price-pill"
-            disabled={out || loading}
-            onClick={() => addItem(product, 1)}
-            title={out ? 'Out of stock' : `Add ${product.name} to cart`}
-          >
-            <TagIcon />
-            {out ? 'Out of stock' : formatNpr(product.price)}
-          </button>
-        </div>
+        </p>
+
+        <button
+          type="button"
+          className="price-pill"
+          disabled={out || loading}
+          onClick={() => addItem(product, 1)}
+          title={out ? 'Out of stock' : `Add ${product.name} to cart`}
+        >
+          <span className="puck"><CartIcon width={14} height={14} /></span>
+          {out ? 'Out of stock' : 'Add to cart'}
+        </button>
       </div>
     </article>
   );

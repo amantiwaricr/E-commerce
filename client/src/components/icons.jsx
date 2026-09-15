@@ -81,6 +81,21 @@ export const PinIcon = (p) => (
   </svg>
 );
 
+export const WhatsAppIcon = (p) => (
+  <svg {...base} strokeWidth={2} {...p}>
+    <path d="M3.5 20.5 5 16.3A8.2 8.2 0 1 1 8 19.3l-4.5 1.2Z" />
+    <path d="M9 9.2c.2 1 .7 2 1.5 2.8.8.8 1.8 1.3 2.8 1.5l.8-1.1 1.7.8-.4 1.3c-1.7.5-3.7-.4-5.2-1.9S8.2 10.9 8.7 9.2L10 8.8l.8 1.7-.9.8Z" />
+  </svg>
+);
+
+export const TruckIcon = (p) => (
+  <svg {...base} {...p}>
+    <path d="M3 16V6.5h10V16M13 9.5h3.7l2.8 3.1V16" />
+    <circle cx="7.5" cy="17.5" r="2" /><circle cx="17" cy="17.5" r="2" />
+    <path d="M9.5 17.5H15" />
+  </svg>
+);
+
 export const SunIcon = (p) => (
   <svg {...base} {...p}>
     <circle cx="12" cy="12" r="4.2" />

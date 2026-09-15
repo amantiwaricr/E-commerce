@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import Emblem from '../components/Emblem';
-import ThemeToggle from '../components/ThemeToggle';
-import SiteFooter from '../components/SiteFooter';
 import {
-  ArrowRight, CartIcon, ClockIcon, FarmIcon, GridIcon, LeafIcon, PhoneIcon,
-  PinIcon, RouteIcon, SearchIcon, ShieldIcon, SnowIcon, StarIcon, UserIcon,
+  ArrowRight, CartIcon, ClockIcon, FarmIcon, LeafIcon, PhoneIcon, PinIcon,
+  RouteIcon, ShieldIcon, SnowIcon, StarIcon,
 } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -35,7 +32,6 @@ export default function HomePage() {
   const { addItem } = useCart();
   const { user, isAuthenticated } = useAuth();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [facets, setFacets] = useState(null);
   const [heroBroken, setHeroBroken] = useState(false);
@@ -77,45 +73,6 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      <header className="home-nav">
-        <Link to="/" className="home-brand">
-          <Emblem className="emblem" />
-          <span>
-            <span className="word">FRESH MEAT</span>
-            <span className="sub">NEPAL</span>
-          </span>
-        </Link>
-
-        <nav className={`nav-pill ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
-          <span className="dots" aria-hidden="true"><GridIcon width={16} height={16} /></span>
-          <Link to="/" className="active">Home</Link>
-          <a href="#how">About</a>
-          <Link to="/shop">Meat Market</Link>
-          <a href="#visit">Contact</a>
-          <button type="button" className="nav-search" aria-label="Search the shop" onClick={() => navigate('/shop')}>
-            <SearchIcon width={16} height={16} />
-          </button>
-        </nav>
-
-        <button
-          type="button"
-          className="home-burger"
-          aria-label="Toggle navigation"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          ☰
-        </button>
-
-        <ThemeToggle className="on-dark" />
-
-        {/* Signed in, this drops you into the catalogue; signed out it is the
-            sign-in button. Orders live in the account menu on the shop chrome. */}
-        <Link to={isAuthenticated ? '/shop' : '/login'} className="home-login">
-          {isAuthenticated ? user.name.split(' ')[0] : 'Log In'}
-          <span className="ico"><UserIcon width={15} height={15} /></span>
-        </Link>
-      </header>
 
       <section className="hero">
         <div className={`hero-photo ${heroBroken || !heroImage ? 'empty' : ''}`}>
@@ -133,12 +90,13 @@ export default function HomePage() {
             </p>
 
             <h1 className="hero-title">
-              <span className="l1">Fresh Meat</span>
-              <span className="l2">Nepal</span>
+              <span className="l1">Fresh <em>Halal</em> Meat,</span>
+              <span className="l2">Cut Daily With <em>Care</em></span>
             </h1>
 
             <p className="hero-sub">
-              100% Natural <span className="sep" /> Farm Fresh <span className="sep" /> Halal Certified
+              Fresh goat, buff, chicken and seafood — cut to order the morning you buy it and
+              delivered chilled across the Kathmandu Valley.
             </p>
 
             <div className="hero-stats">
@@ -395,7 +353,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <SiteFooter />
     </div>
   );
 }

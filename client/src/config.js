@@ -12,6 +12,8 @@ export const STORE_ADDRESS = {
   line1: import.meta.env.VITE_STORE_ADDRESS_LINE1 || 'Balkumari Chowk, Balkumari',
   line2: import.meta.env.VITE_STORE_ADDRESS_LINE2 || 'Lalitpur 44700, Bagmati Province, Nepal',
   hours: import.meta.env.VITE_STORE_HOURS || 'Sunday to Friday, 7:00 AM – 8:00 PM · Saturday, 7:00 AM – 2:00 PM',
+  /* The utility strip has room for one line only. */
+  hoursShort: import.meta.env.VITE_STORE_HOURS_SHORT || 'Open Daily : 7:00 AM – 8:00 PM',
 };
 
 /**

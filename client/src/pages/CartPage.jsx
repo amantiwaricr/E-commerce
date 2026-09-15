@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import TrustStrip from '../components/TrustStrip';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import EmptyState from '../components/EmptyState';
@@ -103,6 +104,8 @@ export default function CartPage() {
           <Link className="btn secondary block" to="/shop" style={{ marginTop: 10 }}>
             Keep shopping
           </Link>
+
+          <TrustStrip compact />
         </aside>
       </div>
     </div>

@@ -394,6 +394,26 @@ COOKIE_SECURE=true
 Because the SPA uses client-side routing, configure your static host to rewrite unknown paths
 to `index.html`.
 
+### Where the look comes from
+
+The storefront's visual language follows the **Al-Ezz Meat Shop** reference
+the owner supplied: a white and cream page under a deep-maroon utility strip,
+crimson actions, a gold wordmark, and pale-pink product cards. The palette is
+sampled from the reference itself and lives at the top of
+`client/src/index.css`:
+
+| Token | Value | Where |
+|---|---|---|
+| `--maroon` | `#690003` | the utility strip |
+| `--coal` | `#150e0d` | its centre notch, the hero scrim, the footer |
+| `--violet` (accent) | `#ad0007` | buttons, prices, active chips |
+| `--gold` | `#f0c36a` | wordmark, highlighted words, footer icons |
+| `--night-2` (card) | `#fef7f6` | product cards, panels, trust strips |
+
+Only the look was taken across. Ordering still runs through this site's own
+cart, checkout and eSewa flow rather than the reference's WhatsApp hand-off,
+and no route, model or API changed.
+
 ### Light and dark
 
 The storefront ships two themes off one set of tokens. **Light is the default**

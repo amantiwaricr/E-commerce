@@ -4,6 +4,7 @@ import api from '../api/client';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import QuantityStepper from '../components/QuantityStepper';
+import TrustStrip from '../components/TrustStrip';
 import { useCart } from '../context/CartContext';
 import { formatNpr } from '../utils/format';
 
@@ -86,6 +87,8 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
+
+          <TrustStrip />
 
           <div className="panel" style={{ marginTop: 18 }}>
             <h3>Description</h3>

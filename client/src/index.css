@@ -1,94 +1,113 @@
 /* ══ Fresh Meat Nepal — storefront design system ══════════════
+   Visual language taken from the Al-Ezz Meat Shop reference: a cream and
+   white page, deep-maroon utility bar, crimson actions and a gold wordmark.
+
    One palette, two themes. Every colour below is a token; the rules that
    follow never name a colour directly, so `data-theme` on <html> flips the
    whole storefront — landing page included, since home.css reads the same
    tokens through the aliases at the bottom of this block.
 
-   Light is the default. Dark is the original black-and-lime look. */
+   Light is the default and is the reference design; dark is the same palette
+   re-grounded on the reference's own near-black. */
 
 :root,
 [data-theme='light'] {
-  /* Surfaces, lightest first */
+  /* Surfaces, lightest first. --night-2 is the reference's pale-pink card
+     body; it carries product cards, panels and the trust strips. */
   --night: #ffffff;
-  --night-2: #f6f8f2;
-  --night-3: #edf1e7;
-  --night-4: #e3e9da;
+  --night-2: #fef7f6;
+  --night-3: #fbeeec;
+  --night-4: #f5e2df;
 
   /* Type */
-  --ink: #11150e;
-  --ink-2: #4b5444;
-  --ink-3: #5f6857;
+  --ink: #171211;
+  --ink-2: #57494a;
+  --ink-3: #7e6e6f;
 
-  /* Accent. Lime stays the fill in both themes — it carries dark text at
-     8.5:1 — but lime *text* on white is only 2:1, so accent type uses a
-     deeper green instead. (Named --violet* for continuity with the markup.) */
-  --violet: #8cc63f;
-  --violet-600: #7ab32f;
-  --violet-soft: rgba(140, 198, 63, .18);
-  --violet-line: rgba(106, 155, 42, .45);
-  --accent-ink: #3f7310;
-  --on-accent: #14200a;
-  --accent-rgb: 140, 198, 63;
+  /* Accent. Crimson fills carry white type; the same crimson is dark enough
+     (5.9:1 on white) to double as accent text, so both tokens agree here.
+     (Named --violet* for continuity with the markup.) */
+  --violet: #ad0007;
+  --violet-600: #8d0006;
+  --violet-soft: rgba(173, 0, 7, .07);
+  --violet-line: rgba(173, 0, 7, .28);
+  --accent-ink: #ad0007;
+  --on-accent: #ffffff;
+  --accent-rgb: 173, 0, 7;
 
-  --line: rgba(17, 21, 14, .13);
-  --row-hover: rgba(17, 21, 14, .035);
-  /* What photographs and overlays fade into. */
+  /* The deep maroon of the utility bar, the near-black of the dark bands,
+     and the gold of the wordmark and highlighted words. */
+  --maroon: #690003;
+  --coal: #150e0d;
+  --gold: #f0c36a;
+  --gold-deep: #9a6f12;
+
+  --line: rgba(23, 18, 17, .12);
+  --row-hover: rgba(173, 0, 7, .04);
   --scrim-rgb: 255, 255, 255;
-  --glass: rgba(255, 255, 255, .86);
+  --glass: rgba(255, 255, 255, .88);
 
-  --amber: #b07800;
+  --amber: #a86400;
   --on-amber: #ffffff;
   --star: #e0a100;
-  --red: #d13b3d;
-  --danger-ink: #b12b2d;
+  --red: #c62026;
+  --danger-ink: #a3161c;
   --ok: #2f8b3c;
 
   --tint-ok: rgba(47, 139, 60, .12);
-  --tint-warn: rgba(176, 120, 0, .13);
-  --tint-danger: rgba(209, 59, 61, .1);
+  --tint-warn: rgba(168, 100, 0, .13);
+  --tint-danger: rgba(198, 32, 38, .1);
   --line-ok: rgba(47, 139, 60, .32);
-  --line-danger: rgba(209, 59, 61, .3);
+  --line-danger: rgba(198, 32, 38, .3);
   --toast-ok: #2f6b22;
-  --toast-err: #9e2b2d;
+  --toast-err: #8d0006;
 
-  --hero-empty-a: #f1ded7;
-  --hero-empty-b: #e8ede1;
+  --hero-empty-a: #f3ded8;
+  --hero-empty-b: #efe6e2;
 
-  /* The footer sits on its own grey band so it reads as a separate plate
-     rather than more white page; its chips go white to stay crisp on it. */
-  --footer-bg: #e9ece5;
-  --footer-line: rgba(17, 21, 14, .11);
-  --footer-chip: #ffffff;
+  --footer-bg: #150e0d;
+  --footer-line: rgba(255, 255, 255, .12);
+  --footer-chip: rgba(255, 255, 255, .06);
+  --footer-ink: #ffffff;
+  --footer-ink-2: #d8cdca;
+  --footer-ink-3: #a59895;
 
-  --shadow-card: 0 1px 2px rgba(17, 21, 14, .05), 0 10px 26px rgba(17, 21, 14, .05);
-  --shadow-pop: 0 14px 40px rgba(17, 21, 14, .16);
-  --shadow-float: 0 4px 14px rgba(17, 21, 14, .14);
+  --shadow-card: 0 1px 2px rgba(23, 18, 17, .05), 0 10px 26px rgba(23, 18, 17, .06);
+  --shadow-pop: 0 14px 40px rgba(23, 18, 17, .18);
+  --shadow-float: 0 4px 14px rgba(23, 18, 17, .14);
 
   color-scheme: light;
 }
 
 [data-theme='dark'] {
-  --night: #0c0f0a;
-  --night-2: #141811;
-  --night-3: #1c221a;
-  --night-4: #242c20;
+  --night: #120c0b;
+  --night-2: #1c1413;
+  --night-3: #261b1a;
+  --night-4: #332423;
 
-  --ink: #ffffff;
-  --ink-2: #b9c2b0;
-  --ink-3: #7d8878;
+  --ink: #fdf7f6;
+  --ink-2: #cbb9b7;
+  --ink-3: #9c8a88;
 
-  --violet: #8cc63f;
-  --violet-600: #a6dd4b;
-  --violet-soft: rgba(140, 198, 63, .14);
-  --violet-line: rgba(140, 198, 63, .42);
-  --accent-ink: #8cc63f;
-  --on-accent: #14200a;
-  --accent-rgb: 140, 198, 63;
+  /* Crimson is too dark to read on near-black, so accent type lifts to the
+     reference's gold while fills stay crimson. */
+  --violet: #c4141c;
+  --violet-600: #d8262e;
+  --violet-soft: rgba(196, 20, 28, .18);
+  --violet-line: rgba(196, 20, 28, .5);
+  --accent-ink: #f0c36a;
+  --on-accent: #ffffff;
+  --accent-rgb: 196, 20, 28;
 
-  --line: rgba(255, 255, 255, .1);
-  --row-hover: rgba(255, 255, 255, .03);
-  --scrim-rgb: 12, 15, 10;
-  --glass: rgba(20, 24, 17, .82);
+  --maroon: #690003;
+  --coal: #150e0d;
+  --gold: #f0c36a;
+  --gold-deep: #f0c36a;
+
+  --line: rgba(255, 255, 255, .11);
+  --row-hover: rgba(255, 255, 255, .04);
+  --scrim-rgb: 18, 12, 11;
+  --glass: rgba(28, 20, 19, .86);
 
   --amber: #ffc94a;
   --on-amber: #4a3600;
@@ -103,18 +122,20 @@
   --line-ok: rgba(111, 207, 95, .3);
   --line-danger: rgba(255, 90, 92, .3);
   --toast-ok: #2b4a1c;
-  --toast-err: #4a1c1d;
+  --toast-err: #6b0f13;
 
   --hero-empty-a: #3a1512;
   --hero-empty-b: #1a0f0c;
 
-  /* Dark mode keeps the footer on the page ground, as it always has. */
-  --footer-bg: transparent;
+  --footer-bg: #0d0807;
   --footer-line: rgba(255, 255, 255, .1);
-  --footer-chip: transparent;
+  --footer-chip: rgba(255, 255, 255, .05);
+  --footer-ink: #fdf7f6;
+  --footer-ink-2: #cbb9b7;
+  --footer-ink-3: #9c8a88;
 
   --shadow-card: none;
-  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .5);
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .55);
   --shadow-float: 0 4px 14px rgba(0, 0, 0, .45);
 
   color-scheme: dark;
@@ -132,11 +153,11 @@
   --paper-3: var(--ink-3);
   --hairline: var(--line);
 
-  --r-shell: 24px;
+  --r-shell: 22px;
   --r-card: 16px;
-  --r-tile: 14px;
+  --r-tile: 12px;
   --sidebar: 250px;
-  --gutter: max(18px, calc((100% - 1180px) / 2));
+  --gutter: max(18px, calc((100% - 1240px) / 2));
 }
 
 /* Colour changes are instant; only the switch itself is worth easing. */
@@ -183,6 +204,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 }
 
 .shell-body { padding: 0 var(--gutter) 26px; flex: 1; }
+.shell-body.bleed { padding: 0; }
 
 /* ══ Theme toggle ════════════════════════════════════════════ */
 .theme-toggle {
@@ -201,6 +223,45 @@ ul { margin: 0; padding: 0; list-style: none; }
 .theme-toggle:hover { color: var(--accent-ink); border-color: var(--violet-line); }
 .theme-toggle:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 
+/* ══ Utility strip ═══════════════════════════════════════════ */
+.utility-bar { background: var(--maroon); color: #f6e4e2; font-size: .76rem; }
+.ub-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 18px;
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.ub-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.ub-item svg { color: #f0c0bd; flex-shrink: 0; }
+a.ub-item:hover { color: #fff; }
+.ub-last { margin-left: auto; padding-right: 0; }
+
+/* The darker slab cut out of the middle of the strip. */
+.ub-notch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+  padding: 0 46px;
+  background: var(--coal);
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: .06em;
+  white-space: nowrap;
+  clip-path: polygon(22px 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+}
+.ub-notch svg { color: var(--gold); }
+
 /* ══ Top bar ═════════════════════════════════════════════════ */
 .topbar {
   background: var(--night);
@@ -208,15 +269,74 @@ ul { margin: 0; padding: 0; list-style: none; }
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 13px var(--gutter);
+  padding: 12px var(--gutter);
   position: sticky;
   top: 0;
   z-index: 40;
 }
 
-.logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.25rem; letter-spacing: -.02em; }
-.logo .dot { width: 9px; height: 9px; border-radius: 3px; background: var(--violet); }
-.logo .full { font-size: .62rem; font-weight: 600; letter-spacing: .14em; color: var(--ink-3); display: block; }
+.logo { display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+.logo .badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--coal);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.logo .badge svg { width: 30px; height: 30px; }
+.logo .word {
+  font-weight: 800;
+  font-size: 1.1rem;
+  line-height: 1.12;
+  letter-spacing: -.01em;
+  color: var(--gold-deep);
+  white-space: nowrap;
+}
+.logo .word span { display: block; }
+
+.nav-links { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
+.nav-links a {
+  padding: 9px 11px;
+  border-radius: 999px;
+  font-size: .92rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.nav-links a:hover { color: var(--accent-ink); }
+.nav-links a.active { color: var(--accent-ink); font-weight: 600; }
+
+/* The crimson call to action the reference keeps pinned to the header. */
+.cta-order {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 9px;
+  background: var(--violet);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-size: .88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .14s ease;
+}
+.cta-order:hover { background: var(--violet-600); }
+.cta-order .puck {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--night);
+  color: var(--violet);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
 
 .search {
   display: flex;
@@ -236,13 +356,14 @@ ul { margin: 0; padding: 0; list-style: none; }
 .search input::placeholder { color: var(--ink-3); }
 .search svg { color: var(--ink-3); flex-shrink: 0; }
 
-.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.topbar .search { width: 190px; max-width: 16vw; }
 
 .top-action {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 12px;
+  padding: 8px 9px;
   border: 0;
   background: none;
   border-radius: 10px;
@@ -317,7 +438,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 /* ── Price range ─────────────────────────────────────────── */
 .price-hint { font-size: .73rem; color: var(--ink-3); margin: 3px 0 0; }
-.histogram { width: 100%; height: 58px; display: block; margin: 12px 0 0; }
+.histogram { width: 100%; height: 58px; display: block; margin: 12px 0 0; color: var(--violet); }
 
 .range-wrap { position: relative; height: 46px; margin-top: -6px; }
 .range-bubbles { position: relative; height: 22px; }
@@ -413,14 +534,16 @@ ul { margin: 0; padding: 0; list-style: none; }
 .segmented button.on { background: var(--violet); border-color: var(--violet); color: var(--on-accent); }
 
 /* ══ Product grid ════════════════════════════════════════════ */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 20px; }
 
 .pcard {
   position: relative;
   background: var(--night-2);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  padding: 10px;
+  padding: 0 14px 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   transition: border-color .16s ease, transform .16s ease;
@@ -429,9 +552,9 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 .pcard-tile {
   position: relative;
-  border-radius: var(--r-tile);
+  margin: 0 -14px;
   background: var(--night-3);
-  aspect-ratio: 1 / .92;
+  aspect-ratio: 1 / .78;
   overflow: hidden;
   display: block;
 }
@@ -439,11 +562,11 @@ ul { margin: 0; padding: 0; list-style: none; }
 .pcard-tile .noimg { height: 100%; display: grid; place-items: center; color: var(--ink-3); font-size: .78rem; }
 
 .heart {
-  position: absolute; top: 9px; right: 9px;
-  width: 29px; height: 29px; border-radius: 50%;
-  border: 1px solid var(--line);
-  background: rgba(var(--scrim-rgb), .72);
-  backdrop-filter: blur(6px);
+  position: absolute; top: 12px; right: 12px;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 0;
+  background: var(--night);
+  box-shadow: var(--shadow-float);
   display: grid; place-items: center; cursor: pointer;
   color: var(--ink-2);
   transition: transform .12s ease, color .12s ease;
@@ -451,37 +574,56 @@ ul { margin: 0; padding: 0; list-style: none; }
 }
 .heart:hover { transform: scale(1.08); color: var(--ink); }
 .heart.on { color: var(--accent-ink); border-color: var(--violet-line); }
-.heart svg { width: 15px; height: 15px; }
+.heart svg { width: 16px; height: 16px; }
 
 .top-item {
-  position: absolute; left: 9px; bottom: 9px;
+  position: absolute; left: 12px; bottom: 12px;
   background: var(--amber); color: var(--on-amber);
   font-size: .68rem; font-weight: 800;
   padding: 4px 10px; border-radius: 999px;
 }
 
-.pcard-body { padding: 11px 5px 5px; text-align: center; display: flex; flex-direction: column; gap: 9px; flex: 1; }
-.pcard-title { font-size: .86rem; font-weight: 600; margin: 0; }
-
-.price-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto; }
+/* The reference's card body: category kicker, name, crimson price, then a
+   full-width crimson action. Left-aligned, not centred. */
+.pcard-body { padding: 13px 8px 6px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.pcard-cat { font-size: .76rem; color: var(--ink-3); }
+.pcard-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pcard-price { margin: 0 0 4px; font-size: .95rem; color: var(--ink-2); display: flex; align-items: baseline; gap: 6px; }
+.pcard-price strong { color: var(--accent-ink); font-size: 1.16rem; font-weight: 800; }
 .price-was { font-size: .78rem; color: var(--ink-3); text-decoration: line-through; }
 
 .price-pill {
-  display: inline-flex; align-items: center; gap: 7px;
-  border: 1.5px solid var(--violet);
-  color: var(--accent-ink);
-  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: auto;
+  border: 0;
+  background: var(--violet);
+  color: var(--on-accent);
   border-radius: 999px;
-  padding: 7px 15px;
-  font-size: .82rem;
+  padding: 11px 16px;
+  font-size: .88rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background .14s ease, color .14s ease;
+  transition: background .14s ease;
 }
-.price-pill:hover { background: var(--violet); color: var(--on-accent); }
+.price-pill:hover:not(:disabled) { background: var(--violet-600); }
 .price-pill:disabled { opacity: .45; cursor: not-allowed; }
-.price-pill:disabled:hover { background: transparent; color: var(--accent-ink); }
-.price-pill svg { width: 13px; height: 13px; }
+.price-pill .puck {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--night); color: var(--violet);
+  display: grid; place-items: center; flex-shrink: 0;
+}
 
 /* ── Feature tile ────────────────────────────────────────── */
 .feature {
@@ -493,22 +635,27 @@ ul { margin: 0; padding: 0; list-style: none; }
   flex-direction: column;
   justify-content: flex-end;
   /* Stays dark in both themes on purpose: it is a photo tile, and the scrim
-     below needs to carry white type over whatever image lands in it. */
+     below needs to carry white type over whatever image lands in it. The
+     gradient is the reference's coal and maroon. */
   color: #fff;
-  background: linear-gradient(160deg, #2b3a17, #16200c 60%, #0c0f0a);
+  background: linear-gradient(160deg, #3a0a0d, #1d0b0b 58%, #150e0d);
   border: 1px solid var(--violet-line);
 }
 .feature img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .feature::after {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(12,15,10,.2) 25%, rgba(12,15,10,.88) 100%);
+  background: linear-gradient(180deg, rgba(21,14,13,.25) 20%, rgba(21,14,13,.92) 100%);
 }
-.feature-body { position: relative; z-index: 2; padding: 14px; text-align: center; }
-.feature-title { font-size: .95rem; font-weight: 700; margin: 0 0 10px; }
+.feature-body { position: relative; z-index: 2; padding: 16px 14px 14px; text-align: center; }
+.feature-title { font-size: 1rem; font-weight: 700; margin: 0 0 12px; line-height: 1.3; }
+/* The tile has no room for the kicker and unit the grid cards carry. */
+.feature .pcard-cat, .feature .pcard-price span { display: none; }
+.feature .pcard-price { justify-content: center; margin: 0 0 10px; }
+.feature .pcard-price strong { color: #fff; }
 .feature .price-pill { background: var(--violet); border-color: var(--violet); color: var(--on-accent); }
 .feature .price-pill:hover { background: var(--violet-600); border-color: var(--violet-600); }
-.feature .heart { background: var(--violet); color: var(--on-accent); border-color: var(--violet); }
+.feature .heart { background: var(--violet); color: var(--on-accent); }
 
 .rating-chip {
   position: absolute;
@@ -544,6 +691,36 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 .price { font-weight: 700; color: var(--accent-ink); font-size: 1.05rem; }
 .price span { font-weight: 500; color: var(--ink-3); font-size: .8rem; }
+
+/* ── Trust strip ─────────────────────────────────────────── */
+.trust-strip {
+  display: grid;
+  /* Fixed steps rather than auto-fit: a 3-then-1 wrap looked accidental. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 6px;
+  margin: 22px 0;
+}
+.trust-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.trust-item + .trust-item { box-shadow: inset 1px 0 0 var(--line); }
+.trust-item svg { color: var(--violet); flex-shrink: 0; }
+.trust-item b { display: block; font-size: .88rem; }
+.trust-item small { display: block; color: var(--ink-3); font-size: .76rem; margin-top: 2px; }
+.trust-strip.compact { margin: 16px 0; }
+.trust-strip.compact .trust-item { padding: 10px 14px; }
+.trust-strip.compact b { font-size: .82rem; }
+
+@media (max-width: 1100px) {
+  .trust-strip { grid-template-columns: repeat(2, 1fr); }
+  .trust-item:nth-child(odd) { box-shadow: none; }
+}
+@media (max-width: 520px) {
+  .trust-strip { grid-template-columns: 1fr; }
+  .trust-item + .trust-item { box-shadow: inset 0 1px 0 var(--line); }
+}
 
 /* ══ Generic UI ══════════════════════════════════════════════ */
 .btn {
@@ -649,6 +826,40 @@ tbody tr:hover { background: var(--row-hover); }
 
 
 .filter-toggle { display: none; }
+
+/* The header carries a lot; shed the optional parts before anything clips. */
+@media (max-width: 1320px) {
+  .topbar .search { display: none; }
+}
+@media (max-width: 1120px) {
+  .cta-order { padding: 11px 14px; }
+  .cta-order .puck { display: none; }
+}
+@media (max-width: 1000px) {
+  .nav-links a { padding: 9px 8px; font-size: .86rem; }
+  .logo .word { font-size: 1rem; }
+}
+
+/* The strip and header carry more than a phone can hold: drop to the one
+   promise that matters, and let the nav scroll. */
+@media (max-width: 900px) {
+  .ub-inner { height: 38px; padding: 0; }
+  .ub-item { display: none; }
+  .ub-notch { margin: 0; width: 100%; justify-content: center; clip-path: none; font-size: .72rem; }
+
+  .topbar { flex-wrap: wrap; gap: 10px; padding: 10px var(--gutter); }
+  .nav-links {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 0 var(--gutter);
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .topbar-actions { gap: 2px; }
+  .cta-order { display: none; }
+}
 
 /* ══ Responsive ══════════════════════════════════════════════ */
 @media (max-width: 860px) {

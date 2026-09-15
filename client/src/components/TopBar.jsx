@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from './Logo';
-import { BoxIcon, CartIcon, HeartIcon, SearchIcon } from './icons';
+import { CartIcon, HeartIcon, SearchIcon, WhatsAppIcon } from './icons';
 import AccountMenu from './AccountMenu';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
+
+/** Matches the reference header's link set, mapped onto routes we have. */
+const NAV = [
+  { to: '/', label: 'Home', end: true },
+  { to: '/shop', label: 'Shop' },
+  { to: '/orders', label: 'Orders' },
+  // Fragments of the landing page: NavLink would mark these active whenever
+  // the pathname is "/", so they are plain links.
+  { to: '/#visit', label: 'Visit Us', hash: true },
+  { to: '/#how', label: 'How It Works', hash: true },
+];
 
 export default function TopBar() {
   const { isAuthenticated } = useAuth();
@@ -34,32 +45,44 @@ export default function TopBar() {
         <Logo />
       </Link>
 
-      <form className="search" onSubmit={submit} role="search">
-        <SearchIcon width={17} height={17} />
-        <input
-          type="search"
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder="Search"
-          aria-label="Search products"
-        />
-      </form>
+      <nav className="nav-links">
+        {NAV.map((item) =>
+          item.hash ? (
+            <Link key={item.to} to={item.to}>{item.label}</Link>
+          ) : (
+            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'active' : '')}>
+              {item.label}
+            </NavLink>
+          )
+        )}
+      </nav>
 
       <div className="topbar-actions">
-        <NavLink to="/orders" className={({ isActive }) => `top-action ${isActive ? 'active' : ''}`}>
-          <BoxIcon width={19} height={19} />
-          <span className="label">Orders</span>
-        </NavLink>
+        <form className="search" onSubmit={submit} role="search">
+          <SearchIcon width={17} height={17} />
+          <input
+            type="search"
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder="Search"
+            aria-label="Search products"
+          />
+        </form>
+
+        <Link className="cta-order" to="/shop">
+          <span className="puck"><WhatsAppIcon width={15} height={15} /></span>
+          Order Fresh Meat
+        </Link>
 
         <NavLink to="/favourites" className={({ isActive }) => `top-action ${isActive ? 'active' : ''}`}>
-          <HeartIcon width={19} height={19} filled={ids.length > 0} />
-          <span className="label">Favourites</span>
+          <HeartIcon width={20} height={20} filled={ids.length > 0} />
+          <span className="sr-only">Favourites</span>
         </NavLink>
 
         <NavLink to="/cart" className={({ isActive }) => `top-action ${isActive ? 'active' : ''}`}>
-          <CartIcon width={19} height={19} />
+          <CartIcon width={20} height={20} />
           {itemCount > 0 && <span className="count-badge">{itemCount}</span>}
-          <span className="label">Cart</span>
+          <span className="sr-only">Cart</span>
         </NavLink>
 
         <ThemeToggle />
@@ -67,9 +90,7 @@ export default function TopBar() {
         {isAuthenticated ? (
           <AccountMenu />
         ) : (
-          <Link className="btn sm" to="/login" style={{ marginLeft: 6 }}>
-            Sign in
-          </Link>
+          <Link className="btn sm" to="/login">Sign in</Link>
         )}
       </div>
     </header>

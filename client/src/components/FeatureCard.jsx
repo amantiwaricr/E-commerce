@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HeartIcon, StarIcon, TagIcon } from './icons';
+import { CartIcon, HeartIcon, StarIcon } from './icons';
 import { formatNpr } from '../utils/format';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
@@ -62,7 +62,7 @@ export default function FeatureCard({ product }) {
           disabled={out || loading}
           onClick={() => addItem(product, 1)}
         >
-          <TagIcon />
+          <span className="puck"><CartIcon width={14} height={14} /></span>
           {out ? 'Out of stock' : formatNpr(product.price)}
         </button>
       </div>

@@ -1,10 +1,16 @@
-/** Compact wordmark for the top bar. */
+import Emblem from './Emblem';
+import { STORE_NAME } from '../config';
+
+/** Header lockup: the roundel beside a two-line gold wordmark. */
 export default function Logo() {
+  const [first, ...rest] = STORE_NAME.split(' ');
   return (
     <span className="logo">
-      FMN
-      <span className="dot" aria-hidden="true" />
-      <span className="full">FRESH MEAT NEPAL</span>
+      <span className="badge"><Emblem /></span>
+      <span className="word">
+        <span>{first}</span>
+        <span>{rest.join(' ')}</span>
+      </span>
     </span>
   );
 }
