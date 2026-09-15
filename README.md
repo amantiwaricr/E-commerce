@@ -309,6 +309,27 @@ never blocked by a notification failure.
 
 ---
 
+### Which updates reach the customer
+
+The confirmation that goes out when an order is placed is always sent. Beyond that,
+only some status changes are worth an email — `ORDER_STATUS_EMAILS` in `server/.env`
+decides which:
+
+```env
+ORDER_STATUS_EMAILS=confirmed,delivered,cancelled
+```
+
+`processing` and `shipped` are deliberately absent. On a same-day delivery they would
+mean four emails for one order, and a sender that mails about everything gets ignored.
+`cancelled` is included because an order vanishing without a word is worse than an extra
+email, particularly once it has been paid for — drop it from the list if you would rather
+it stayed quiet.
+
+WhatsApp is not filtered by this setting: it carries every step, and the email is kept for
+the moments that matter.
+
+---
+
 ## 7. WhatsApp setup
 
 Set `WHATSAPP_PROVIDER` to `meta`, `twilio`, or `none` (the default — messages are skipped).

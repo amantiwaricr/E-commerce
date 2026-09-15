@@ -113,6 +113,22 @@ const env = {
   // True only when a real SMTP transport can be built.
   mailConfigured: configured(process.env.SMTP_HOST, process.env.SMTP_USER, process.env.SMTP_PASSWORD),
 
+  notifications: {
+    /* Which order-status changes are worth an email to the customer.
+       `confirmed` and `delivered` are the two ends of the journey the shop
+       wants to announce; `cancelled` is here because an order disappearing
+       without a word is worse than an extra email, especially once it has
+       been paid for. `processing` and `shipped` are deliberately absent.
+       Override with a comma-separated list, or set it empty for none. */
+    statusEmails: (process.env.ORDER_STATUS_EMAILS === undefined
+      ? 'confirmed,delivered,cancelled'
+      : process.env.ORDER_STATUS_EMAILS
+    )
+      .split(',')
+      .map((status) => status.trim().toLowerCase())
+      .filter(Boolean),
+  },
+
   whatsapp: {
     provider: (process.env.WHATSAPP_PROVIDER || 'none').toLowerCase(),
     meta: {

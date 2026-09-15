@@ -1,6 +1,7 @@
 'use strict';
 
 const Order = require('../models/Order');
+const { env } = require('../config/env');
 const { sendMail } = require('./email.service');
 const { sendWhatsApp } = require('./whatsapp.service');
 const templates = require('./templates');
@@ -59,17 +60,34 @@ const sendOrderConfirmation = async (order, user) => {
   return { email: emailResult, whatsapp: waResult };
 };
 
-/** Notifies the customer that their order moved to a new status. */
+/**
+ * Whether a move to this status earns an email. Not every step is worth one:
+ * a customer who gets a mail for "processing" and another for "shipped" on the
+ * way to a same-day delivery learns to ignore the sender. Configured by
+ * ORDER_STATUS_EMAILS — see config/env.js.
+ */
+const shouldEmailStatus = (status) =>
+  env.notifications.statusEmails.includes(String(status || '').toLowerCase());
+
+/**
+ * Notifies the customer that their order moved to a new status.
+ *
+ * WhatsApp is not filtered: it is the channel for the running commentary, and
+ * the email is reserved for the moments that matter.
+ */
 const sendOrderStatusUpdate = async (order, user, note = '') => {
   const payload = toTemplateOrder(order, user);
   const mail = templates.orderStatusEmail(payload, note);
+  const wanted = shouldEmailStatus(order.orderStatus);
 
   const [email, whatsapp] = await Promise.all([
-    sendMail({ to: user?.email, subject: mail.subject, html: mail.html, text: mail.text }),
+    wanted
+      ? sendMail({ to: user?.email, subject: mail.subject, html: mail.html, text: mail.text })
+      : Promise.resolve({ sent: false, skipped: true, reason: `no email is sent for "${order.orderStatus}"` }),
     sendWhatsApp({ to: order.shippingAddress?.phone || user?.phone, body: templates.orderStatusWhatsApp(payload, note) }),
   ]);
 
   return { email, whatsapp };
 };
 
-module.exports = { sendOrderConfirmation, sendOrderStatusUpdate, toTemplateOrder };
+module.exports = { sendOrderConfirmation, sendOrderStatusUpdate, toTemplateOrder, shouldEmailStatus };
