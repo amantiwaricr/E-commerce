@@ -109,7 +109,9 @@ export default function HomePage() {
 
         <ThemeToggle className="on-dark" />
 
-        <Link to={isAuthenticated ? '/orders' : '/login'} className="home-login">
+        {/* Signed in, this drops you into the catalogue; signed out it is the
+            sign-in button. Orders live in the account menu on the shop chrome. */}
+        <Link to={isAuthenticated ? '/shop' : '/login'} className="home-login">
           {isAuthenticated ? user.name.split(' ')[0] : 'Log In'}
           <span className="ico"><UserIcon width={15} height={15} /></span>
         </Link>
