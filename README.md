@@ -646,9 +646,56 @@ Order statuses move `pending → confirmed → processing → shipped → delive
 - Stock is reserved with conditional atomic updates, so concurrent checkouts cannot oversell.
 - eSewa callbacks are signature-verified **and** confirmed against eSewa's status API, with the
   paid amount compared to the order total before anything is marked paid.
-- Rate limits apply globally, and more tightly to sign-in and order creation.
+- A resubmitted checkout returns the order it already placed instead of placing a second
+  one. The client may send its own `Idempotency-Key` header; without one, a key is derived
+  from the customer, basket, total and address within a two-minute window, and a unique
+  sparse index on the order makes the guarantee the database's rather than the code's.
 - `helmet`, `hpp` and an origin allowlist for CORS are enabled by default.
 - Secrets live only in `.env`; production boots fail fast if a required one is missing.
+
+### Rate limits
+
+| Endpoint | Limit |
+|---|---|
+| Everything under `/api` | 600 / 15 min |
+| Sign-in, register, OTP | 30 / 15 min |
+| `POST /api/orders` | 10 / min |
+| eSewa callbacks, `/verify`, retry payment | 30 / 15 min |
+| Other writes | 40 / min |
+
+The eSewa callbacks cannot require a session — the redirect arrives cross-site from
+eSewa's servers, so the cookie may not come with it. What protects them is the signature
+on the payload and the server-to-server status check; the rate limit is what stops someone
+flooding forged payloads to burn CPU and our quota at the gateway.
+
+### TLS
+
+Everything the server does over a network has a TLS floor of 1.2 (`TLS_MIN_VERSION`):
+outbound calls to eSewa go through an agent that verifies certificates and refuses older
+protocols, and a `MONGODB_URI` pointing at a remote host over plain `mongodb://` has TLS
+switched on automatically. `mongodb+srv://` is already TLS, and a URI that states `tls=`
+or `ssl=` itself is left alone — as is a local development database.
+
+In production (or with `FORCE_HTTPS=true`) plain HTTP is not served:
+
+- `GET`/`HEAD` are redirected with a 308 to the same URL over HTTPS.
+- Anything else is refused with a 403 rather than redirected. A 30x on a `POST` either
+  drops the body or replays it, and silently replaying a checkout is worse than failing.
+- `/api/health` stays reachable over HTTP so load balancers can probe it.
+- HSTS is sent **only** where HTTPS is genuinely enforced, so a host that is not yet fully
+  TLS-ready cannot lock browsers out of itself.
+
+TLS normally terminates in front of this process (nginx, Render, Fly), which is why
+`app.set('trust proxy', 1)` is on — it is what makes `req.secure` reflect
+`X-Forwarded-Proto`. To serve TLS from Node instead, set `SSL_KEY_PATH` and
+`SSL_CERT_PATH`.
+
+**Local HTTPS.** `npm run ssl:dev --prefix server` writes a self-signed certificate to
+`server/certs/` (gitignored) and prints the settings to paste into `server/.env`. Use it to
+exercise the things that only happen over HTTPS — `COOKIE_SECURE=true`, the redirect,
+`SameSite=None` — rather than discovering them in production. Browsers will warn about the
+certificate, because nothing vouches for it; that is expected. Production certificates come
+from a CA, and Let's Encrypt is free and automatic.
 
 ---
 

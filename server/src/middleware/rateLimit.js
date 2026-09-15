@@ -20,4 +20,12 @@ module.exports = {
   // A 4-digit code is only 10,000 values: cap guesses hard at the edge as well
   // as per-account, so an attacker cannot spread attempts across accounts.
   otpLimiter: build(15 * 60 * 1000, 20, 'Too many verification attempts, please try again later'),
+  /* Settling a payment costs a signature check and a call out to eSewa. The
+     signature makes forgery pointless, but nothing stops someone replaying
+     junk to burn our CPU and our quota at the gateway, so the door is narrow.
+     Genuine traffic uses this once or twice per order. */
+  paymentLimiter: build(15 * 60 * 1000, 30, 'Too many payment attempts, please try again in a few minutes'),
+  /* Placing an order moves stock. One a minute is generous for a person and
+     ruinous for a script. */
+  checkoutLimiter: build(60 * 1000, 10, 'Too many orders placed, please wait a moment'),
 };

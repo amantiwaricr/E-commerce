@@ -36,3 +36,6 @@ server/uploads/*
 .DS_Store
 Thumbs.db
 *.swp
+
+# Local HTTPS development certificates — never commit these
+server/certs/

@@ -1,11 +1,23 @@
 'use strict';
 
 const crypto = require('crypto');
+const https = require('https');
 const axios = require('axios');
 const { env } = require('../config/env');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 const { round2 } = require('../utils/money');
+
+/**
+ * Money leaves the building over this agent, so the TLS floor is explicit
+ * rather than whatever the Node build happens to default to: certificates are
+ * verified, and anything below TLS 1.2 is refused.
+ */
+const tlsAgent = new https.Agent({
+  minVersion: env.https.minVersion,
+  rejectUnauthorized: true,
+  keepAlive: true,
+});
 
 /** Fields eSewa signs, in the exact order the signature string requires. */
 const SIGNED_FIELD_NAMES = ['total_amount', 'transaction_uuid', 'product_code'];
@@ -93,6 +105,7 @@ const checkTransactionStatus = async ({ transactionUuid, totalAmount }) => {
   const url = env.esewa.statusUrl;
   try {
     const { data } = await axios.get(url, {
+      httpsAgent: tlsAgent,
       params: {
         product_code: env.esewa.merchantCode,
         total_amount: round2(totalAmount),

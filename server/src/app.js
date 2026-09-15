@@ -14,6 +14,7 @@ const sanitizeRequest = require('./middleware/sanitizeRequest');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
+const { enforceHttps, hstsOptions } = require('./middleware/https');
 
 const createApp = () => {
   const app = express();
@@ -21,10 +22,15 @@ const createApp = () => {
   // Behind a proxy (Render/Heroku/nginx) so secure cookies and rate limits work.
   app.set('trust proxy', 1);
 
+  // Before anything else: nothing sensitive should be answered over plain HTTP.
+  app.use(enforceHttps);
+
   app.use(
     helmet({
       // Images are served cross-origin to the SPA on a different host.
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      // Sent only where HTTPS is actually enforced — see middleware/https.js.
+      hsts: env.https.enforce ? hstsOptions() : false,
     })
   );
 

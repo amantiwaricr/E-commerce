@@ -98,6 +98,9 @@ const orderSchema = new mongoose.Schema(
       whatsappSentAt: { type: Date },
       lastError: { type: String, default: '' },
     },
+    /* Guards against a double-submitted checkout becoming two orders. Unique
+       and sparse: older orders have no key and must not collide on `null`. */
+    idempotencyKey: { type: String, index: { unique: true, sparse: true }, select: false },
     cancelledReason: { type: String, trim: true, maxlength: 400, default: '' },
     placedAt: { type: Date, default: Date.now },
   },

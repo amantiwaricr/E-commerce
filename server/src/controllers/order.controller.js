@@ -10,6 +10,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const logger = require('../utils/logger');
 const { generateOrderNumber } = require('../utils/orderNumber');
 const { priceItems } = require('../services/pricing.service');
+const { keyFor } = require('../utils/idempotency');
 const esewaService = require('../services/esewa.service');
 const { sendOrderConfirmation } = require('../services/notification.service');
 
@@ -39,6 +40,16 @@ const reserveStock = async (items) => {
   }
   return applied;
 };
+
+/** The form fields an online order needs to reach eSewa, or null for COD. */
+const paymentInstructionsFor = (order) =>
+  order.payment?.transactionUuid
+    ? esewaService.buildPaymentPayload({
+        transactionUuid: order.payment.transactionUuid,
+        amount: order.itemsTotal,
+        deliveryCharge: order.deliveryCharge,
+      })
+    : undefined;
 
 /** Returns reserved stock to the catalogue (cancellation, failed payment, rollback). */
 const releaseStock = async (items) => {
@@ -76,6 +87,31 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 
   const priced = priceItems(entries, deliveryMethod);
+
+  /*
+   * Work out the idempotency key BEFORE any stock moves. A resubmitted
+   * checkout must return the order it already placed, not reserve a second
+   * lot of meat and then fail on the unique index.
+   */
+  const idempotencyKey = keyFor(req, {
+    userId: req.user._id,
+    items: priced.items,
+    totalAmount: priced.totalAmount,
+    paymentMethod,
+    shippingAddress,
+  });
+
+  const existing = await Order.findOne({ idempotencyKey }).select('+idempotencyKey');
+  if (existing) {
+    logger.warn(`Duplicate checkout ignored for ${existing.orderNumber} (idempotency key matched)`);
+    return res.status(200).json({
+      success: true,
+      duplicate: true,
+      order: existing.toJSON(),
+      payment: paymentInstructionsFor(existing),
+    });
+  }
+
   await reserveStock(priced.items);
 
   const isOnline = ONLINE_METHODS.has(paymentMethod);
@@ -110,6 +146,7 @@ const createOrder = asyncHandler(async (req, res) => {
         timeline,
       },
       placedAt: now,
+      idempotencyKey,
     });
 
     if (isOnline) {
@@ -139,11 +176,7 @@ const createOrder = asyncHandler(async (req, res) => {
   const response = { success: true, order: order.toJSON() };
 
   if (isOnline) {
-    response.payment = esewaService.buildPaymentPayload({
-      transactionUuid: order.payment.transactionUuid,
-      amount: order.itemsTotal,
-      deliveryCharge: order.deliveryCharge,
-    });
+    response.payment = paymentInstructionsFor(order);
   } else {
     sendOrderConfirmation(order, req.user).catch((err) =>
       logger.error('Order confirmation notification failed', err.message)

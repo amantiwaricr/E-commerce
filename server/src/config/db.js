@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const { env } = require('./env');
 const logger = require('../utils/logger');
 const { isObsoleteIndex } = require('../utils/indexes');
+const { tlsOptionsFor, isLocalUri } = require('../utils/mongoTls');
 
 mongoose.set('strictQuery', true);
 
@@ -36,10 +37,16 @@ const dropObsoleteIndexes = async () => {
 };
 
 const connectDB = async (uri = env.mongoUri) => {
+  const tls = tlsOptionsFor(uri);
   const conn = await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 10000,
+    ...tls,
   });
   logger.info(`MongoDB connected: ${conn.connection.host}/${conn.connection.name}`);
+  if (tls.tls) logger.info('MongoDB connection secured with TLS');
+  if (env.isProduction && isLocalUri(uri)) {
+    logger.warn('MONGODB_URI points at localhost in production — is that intended?');
+  }
 
   await dropObsoleteIndexes().catch((err) => logger.error(`Index cleanup failed: ${err.message}`));
 

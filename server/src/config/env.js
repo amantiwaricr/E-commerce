@@ -67,6 +67,23 @@ const env = {
     domain: process.env.COOKIE_DOMAIN || undefined,
   },
 
+  https: {
+    /* Redirect plain HTTP to HTTPS and send HSTS. On by default in production;
+       turn it off only if something in front already does it. */
+    enforce: bool(process.env.FORCE_HTTPS, isProduction),
+    hstsMaxAge: num(process.env.HSTS_MAX_AGE, 31536000), // one year
+    hstsIncludeSubDomains: bool(process.env.HSTS_INCLUDE_SUBDOMAINS, true),
+    /* Off by default: preloading is effectively irreversible, so it has to be
+       a deliberate choice once every subdomain is known to serve TLS. */
+    hstsPreload: bool(process.env.HSTS_PRELOAD, false),
+    /* Serve TLS from Node itself — for local development, or a deployment
+       with no proxy in front. Both paths must be set for it to engage. */
+    keyPath: process.env.SSL_KEY_PATH || '',
+    certPath: process.env.SSL_CERT_PATH || '',
+    /* TLS 1.2 is the floor for PCI DSS; 1.0 and 1.1 are deprecated. */
+    minVersion: process.env.TLS_MIN_VERSION || 'TLSv1.2',
+  },
+
   esewa: {
     mode: esewaMode,
     isSandbox: esewaMode !== 'production',
