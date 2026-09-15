@@ -5,6 +5,7 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
 import OrderTimeline from '../components/OrderTimeline';
+import InvoiceButton from '../components/InvoiceButton';
 import { useToast } from '../context/ToastContext';
 import { formatDate, formatNpr } from '../utils/format';
 import { PAYMENT_METHOD_LABELS } from '../config';
@@ -106,6 +107,7 @@ export default function OrderDetailPage() {
         </div>
 
         <div className="row">
+          <InvoiceButton order={order} className="btn" />
           {canRetryPayment && (
             <button type="button" className="btn" onClick={retryPayment} disabled={busy}>
               Pay now

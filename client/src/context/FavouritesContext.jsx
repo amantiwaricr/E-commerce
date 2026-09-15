@@ -42,7 +42,9 @@ export const FavouritesProvider = ({ children }) => {
           writeGuest([]);
         }
         const { data } = await api.get('/favourites');
-        setIds(data.ids);
+        // Never let an unexpected response shape white-screen the whole app:
+        // this list is read by the top bar, which renders on every page.
+        setIds(Array.isArray(data.ids) ? data.ids : []);
       } catch {
         setIds([]);
       }
@@ -66,7 +68,7 @@ export const FavouritesProvider = ({ children }) => {
         const { data } = on
           ? await api.delete(`/favourites/${productId}`)
           : await api.post(`/favourites/${productId}`);
-        setIds(data.ids);
+        setIds(Array.isArray(data.ids) ? data.ids : next);
       } catch (err) {
         setIds(ids); // roll back
         toast.error(err.message);

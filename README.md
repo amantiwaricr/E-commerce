@@ -605,6 +605,8 @@ Every response is JSON. Errors come back as
 | POST | `/api/orders/:orderNumber/cancel` | Customer | Cancel before dispatch |
 | POST | `/api/orders/:orderNumber/pay` | Customer | Retry an abandoned online payment |
 
+| GET | `/api/orders/:orderNumber/invoice` | The bill as a PDF. Delivered orders only; owner or admin |
+
 ### Payments
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
@@ -630,6 +632,28 @@ Every response is JSON. Errors come back as
 | PATCH | `/api/admin/orders/:orderNumber/tracking` | Carrier, code, ETA, timeline note |
 | GET | `/api/admin/users` | List customers |
 | PATCH | `/api/admin/users/:id/block` | Block / unblock |
+
+---
+
+### The bill
+
+A delivered order gets a **Download bill** button in *My orders* and on the order's
+own page. It fetches `GET /api/orders/:orderNumber/invoice`, which renders a PDF with
+`pdfkit` and returns it as an attachment.
+
+Only delivered orders have one. Until then the amounts can still change — a
+cancellation restocks the order, a cash order is not yet paid — and a bill that can
+change is not a bill. The endpoint answers `400` with that explanation for anything
+else, and `403` for an order belonging to another account.
+
+Line amounts are recomputed from price × quantity rather than read from the stored
+subtotal, so a figure that ever drifted cannot print a bill that does not add up. The
+invoice number is derived from the order number (`FMN-2026-00184` → `INV-2026-00184`),
+so one order can only ever produce one bill number.
+
+The shop's own details on the bill come from `STORE_ADDRESS`, `STORE_SUPPORT_EMAIL` and
+`STORE_SUPPORT_PHONE`. `STORE_REGISTRATION_NUMBER` is printed only if set — left empty,
+the bill says the shop is not VAT registered rather than inventing a tax breakdown.
 
 ---
 

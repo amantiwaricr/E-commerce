@@ -13,6 +13,8 @@ const { priceItems } = require('../services/pricing.service');
 const { keyFor } = require('../utils/idempotency');
 const esewaService = require('../services/esewa.service');
 const { sendOrderConfirmation } = require('../services/notification.service');
+const { buildInvoice, renderInvoicePdf } = require('../services/invoice.service');
+const User = require('../models/User');
 
 /** Payment methods that are settled online through eSewa. */
 const ONLINE_METHODS = new Set(['esewa', 'card']);
@@ -217,6 +219,40 @@ const getMyOrder = asyncHandler(async (req, res) => {
   return res.json({ success: true, order: order.toJSON() });
 });
 
+/**
+ * GET /api/orders/:orderNumber/invoice
+ *
+ * The customer's bill, as a PDF. Only for a delivered order: until then the
+ * amounts can still change — a cancellation restocks it, a COD order is not
+ * paid — and a bill that can change is not a bill.
+ */
+const downloadInvoice = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ orderNumber: req.params.orderNumber });
+  if (!order) throw ApiError.notFound('Order not found');
+
+  const isOwner = order.user.toString() === req.user._id.toString();
+  if (!isOwner && req.user.role !== 'admin') {
+    throw ApiError.forbidden('This order belongs to another account');
+  }
+
+  if (order.orderStatus !== 'delivered') {
+    throw ApiError.badRequest('The bill is available once the order has been delivered');
+  }
+
+  // The order stores only the customer's id, and the bill needs their name.
+  const customer = isOwner ? req.user : await User.findById(order.user);
+
+  const invoice = buildInvoice(order, customer);
+  const pdf = await renderInvoicePdf(invoice);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Length', pdf.length);
+  res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoiceNumber}.pdf"`);
+  // A bill is per-customer and must never be held by a shared cache.
+  res.setHeader('Cache-Control', 'private, no-store');
+  return res.send(pdf);
+});
+
 /** POST /api/orders/:orderNumber/cancel — customers may cancel before dispatch. */
 const cancelMyOrder = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ orderNumber: req.params.orderNumber });
@@ -272,6 +308,7 @@ module.exports = {
   getMyOrder,
   cancelMyOrder,
   retryPayment,
+  downloadInvoice,
   reserveStock,
   releaseStock,
   ONLINE_METHODS,

@@ -88,6 +88,12 @@ export const WhatsAppIcon = (p) => (
   </svg>
 );
 
+export const DownloadIcon = (p) => (
+  <svg {...base} {...p}>
+    <path d="M12 3v11m0 0 4-4m-4 4-4-4M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17" />
+  </svg>
+);
+
 export const TruckIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M3 16V6.5h10V16M13 9.5h3.7l2.8 3.1V16" />

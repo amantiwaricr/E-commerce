@@ -150,6 +150,12 @@ const env = {
     deliveryCharge: num(process.env.DELIVERY_CHARGE, 100),
     freeDeliveryThreshold: num(process.env.FREE_DELIVERY_THRESHOLD, 3000),
     deliveryEta: process.env.DEFAULT_DELIVERY_ETA || 'Within 24 hours inside Kathmandu Valley',
+    supportEmail: process.env.STORE_SUPPORT_EMAIL || '',
+    /* Printed on the invoice. Leave the registration number empty if the shop
+       is not VAT/PAN registered — the line is then omitted rather than faked. */
+    address: process.env.STORE_ADDRESS || 'Balkumari Chowk, Balkumari, Lalitpur 44700, Nepal',
+    registrationNumber: process.env.STORE_REGISTRATION_NUMBER || '',
+    registrationLabel: process.env.STORE_REGISTRATION_LABEL || 'PAN',
   },
 
   seed: {

@@ -5,6 +5,7 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
+import InvoiceButton from '../components/InvoiceButton';
 import { formatDate, formatNpr } from '../utils/format';
 import { PAYMENT_METHOD_LABELS } from '../config';
 
@@ -76,9 +77,12 @@ export default function OrdersPage() {
                       <StatusBadge status={order.orderStatus} />
                     </td>
                     <td>
-                      <Link className="btn secondary sm" to={`/orders/${order.orderNumber}`}>
-                        Track
-                      </Link>
+                      <div className="row" style={{ flexWrap: 'nowrap', gap: 6 }}>
+                        <Link className="btn secondary sm" to={`/orders/${order.orderNumber}`}>
+                          Track
+                        </Link>
+                        <InvoiceButton order={order} />
+                      </div>
                     </td>
                   </tr>
                 ))}
