@@ -76,9 +76,19 @@ const tlsProbe = (host, port) =>
     socket.on('error', () => resolve(null));
   });
 
+/**
+ * Fetches JSON over http or https, whichever the URL says. The development
+ * certificate is self-signed and deliberately not trusted by anything, so
+ * verification is off here — this only ever talks to a port on this machine,
+ * and the point is to read the health endpoint, not to vouch for the cert.
+ */
 const httpJson = (url) =>
   new Promise((resolve) => {
-    const req = http.get(url, { timeout: 2500 }, (res) => {
+    const secure = url.startsWith('https:');
+    const client = secure ? https : http;
+    const options = secure ? { timeout: 2500, rejectUnauthorized: false } : { timeout: 2500 };
+
+    const req = client.get(url, options, (res) => {
       let body = '';
       res.on('data', (c) => { body += c; });
       res.on('end', () => {
@@ -181,8 +191,13 @@ const main = async () => {
   const port = Number(server.PORT || 5000);
   const apiUp = await portOpen('127.0.0.1', port);
   if (apiUp) {
-    const health = await httpJson(`http://127.0.0.1:${port}/api/health`);
-    if (health?.success) ok(`API is running on port ${port}`);
+    // Ask the port which language it speaks before speaking it: an API serving
+    // TLS answers a plain-HTTP request with a handshake error, which used to
+    // be reported here as "something else is on this port".
+    const apiTls = await tlsProbe('127.0.0.1', port);
+    const scheme = apiTls ? 'https' : 'http';
+    const health = await httpJson(`${scheme}://127.0.0.1:${port}/api/health`);
+    if (health?.success) ok(`API is running on port ${port}`, `over ${scheme.toUpperCase()}`);
     else warn(`Something is on port ${port} but it is not this API`, 'Check the terminal running `npm run dev`.');
   } else {
     bad(`API is not running on port ${port}`, 'Start it with `npm run dev` from the project root.');

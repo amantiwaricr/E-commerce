@@ -12,13 +12,17 @@
  * TLS on your own machine, which is the only way to exercise `secure` cookies,
  * the HTTP→HTTPS redirect and `SameSite=None` before production rather than
  * after. Production certificates come from a CA; Let's Encrypt is free.
+ *
+ * The certificate is made in Node, not by shelling out to `openssl`. openssl is
+ * not on PATH in PowerShell or the Windows command prompt, and telling someone
+ * to go and install a C toolchain to see a padlock on their own laptop is not a
+ * setup step — it is a dead end.
  */
 
-const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const { setValues } = require('./env-file');
+const { readEnvFile, setValues } = require('./env-file');
 
 const ROOT = path.resolve(__dirname, '..');
 const CERT_DIR = path.join(ROOT, 'server', 'certs');
@@ -32,127 +36,183 @@ const ENVS = {
   admin: path.join(ROOT, 'admin', '.env'),
 };
 
-const API = (scheme) => `${scheme}://localhost:5000`;
-const SITE = (scheme) => `${scheme}://localhost:5173`;
-const ADMIN = (scheme) => `${scheme}://localhost:5174`;
-
 const missingEnvs = () => Object.entries(ENVS).filter(([, file]) => !fs.existsSync(file)).map(([name]) => name);
 
-const ensureOpenssl = () => {
+const valuesIn = (file) => (readEnvFile(file) || { values: {} }).values;
+
+/**
+ * Builds an `<scheme>://<host>:<port>` function from whatever is already
+ * configured, so only the scheme changes. Hardcoding localhost:5000 here was a
+ * real bug: an API on any other port got https:// URLs pointing at nothing.
+ *
+ * @param existing  a URL already in a .env, used for its host and port
+ * @param fallback  the port to assume when there is nothing to read
+ * @param override  a port that outranks the URL's own (the API's PORT does)
+ */
+const originFrom = (existing, fallback, override) => {
+  let host = 'localhost';
+  let port = String(override || fallback);
+
   try {
-    execFileSync('openssl', ['version'], { stdio: 'ignore' });
-  } catch (err) {
-    console.error('\nopenssl was not found on your PATH.');
-    console.error('  Windows: it ships with Git for Windows — run this from "Git Bash".');
-    console.error('  macOS:   brew install openssl');
-    console.error('  Linux:   apt install openssl\n');
-    process.exit(1);
+    const url = new URL(existing);
+    host = url.hostname;
+    if (!override) port = url.port || (url.protocol === 'https:' ? '443' : '80');
+  } catch {
+    // Absent or malformed — the defaults above stand.
+  }
+
+  const authority = port === '80' || port === '443' ? host : `${host}:${port}`;
+  return (scheme) => `${scheme}://${authority}`;
+};
+
+/** Where each app lives, read from the .env files rather than assumed. */
+const readOrigins = () => {
+  const server = valuesIn(ENVS.server);
+  const client = valuesIn(ENVS.client);
+
+  return {
+    // PORT is what the API actually listens on, so it outranks a stale BACKEND_URL.
+    api: originFrom(server.BACKEND_URL || client.VITE_API_URL, 5000, server.PORT),
+    site: originFrom(server.FRONTEND_URL || client.VITE_SITE_URL, 5173),
+    admin: originFrom(server.ADMIN_URL, 5174),
+  };
+};
+
+const loadSelfsigned = () => {
+  try {
+    return require('selfsigned');
+  } catch {
+    console.error('\nThe `selfsigned` package is missing — it makes the certificate.');
+    console.error('  Run `npm install` in the project root, then try again.\n');
+    return process.exit(1);
   }
 };
 
-const generate = () => {
+const generate = async () => {
   if (fs.existsSync(KEY) && fs.existsSync(CERT)) {
     console.log('✓ certificate already present in server/certs');
     return;
   }
-  ensureOpenssl();
+
+  const selfsigned = loadSelfsigned();
   fs.mkdirSync(CERT_DIR, { recursive: true });
 
-  // SANs matter: modern browsers ignore the legacy Common Name entirely.
+  let pems;
   try {
-    // openssl writes its key-generation progress to stderr; swallow it, and
-    // only show the output if the command actually fails.
-    execFileSync(
-      'openssl',
+    pems = await selfsigned.generate(
       [
-        'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
-        '-keyout', KEY, '-out', CERT, '-days', String(DAYS),
-        '-subj', '/C=NP/ST=Bagmati/L=Lalitpur/O=Fresh Meat Nepal/CN=localhost',
-        '-addext', 'subjectAltName=DNS:localhost,DNS:127.0.0.1,IP:127.0.0.1,IP:::1',
+        { name: 'commonName', value: 'localhost' },
+        { name: 'organizationName', value: 'Fresh Meat Nepal' },
+        { name: 'countryName', value: 'NP' },
+        { name: 'localityName', value: 'Lalitpur' },
       ],
-      { stdio: ['ignore', 'ignore', 'pipe'] }
+      {
+        days: DAYS,
+        keySize: 2048,
+        algorithm: 'sha256',
+        // SANs matter: modern browsers ignore the legacy Common Name entirely.
+        extensions: [
+          {
+            name: 'subjectAltName',
+            altNames: [
+              { type: 2, value: 'localhost' },
+              { type: 7, ip: '127.0.0.1' },
+              { type: 7, ip: '::1' },
+            ],
+          },
+        ],
+      }
     );
   } catch (err) {
-    console.error('\nopenssl could not create the certificate:\n');
-    console.error(String(err.stderr || err.message));
-    process.exit(1);
+    console.error('\nThe certificate could not be created:\n');
+    console.error(`  ${err.message}\n`);
+    return process.exit(1);
   }
+
+  // 0o600: the private key is readable by this account only. It never leaves
+  // the machine, but a key with default permissions is a habit worth not having.
+  fs.writeFileSync(KEY, pems.private, { mode: 0o600 });
+  fs.writeFileSync(CERT, pems.cert);
   console.log(`✓ generated a self-signed certificate, valid ${DAYS} days`);
 };
 
 /** Cert paths are written relative to each app, so the repo stays movable. */
-const relative = (from, file) => `./${path.relative(from, file).split(path.sep).join('/')}`;
+const relative = (from, file) => {
+  const rel = path.relative(from, file).split(path.sep).join('/');
+  return rel.startsWith('.') ? rel : `./${rel}`;
+};
 
-const turnOn = () => {
-  generate();
+const apply = (scheme, { api, site, admin }) => ({
+  server: setValues(ENVS.server, {
+    SSL_KEY_PATH: scheme === 'https' ? relative(path.dirname(ENVS.server), KEY) : '',
+    SSL_CERT_PATH: scheme === 'https' ? relative(path.dirname(ENVS.server), CERT) : '',
+    BACKEND_URL: api(scheme),
+    FRONTEND_URL: site(scheme),
+    ADMIN_URL: admin(scheme),
+    SITE_URL: site(scheme),
+    COOKIE_SECURE: scheme === 'https' ? 'true' : 'false',
+  }),
+  client: setValues(ENVS.client, {
+    SSL_KEY_PATH: scheme === 'https' ? relative(path.dirname(ENVS.client), KEY) : '',
+    SSL_CERT_PATH: scheme === 'https' ? relative(path.dirname(ENVS.client), CERT) : '',
+    VITE_API_URL: `${api(scheme)}/api`,
+    VITE_SITE_URL: site(scheme),
+  }),
+  admin: setValues(ENVS.admin, {
+    SSL_KEY_PATH: scheme === 'https' ? relative(path.dirname(ENVS.admin), KEY) : '',
+    SSL_CERT_PATH: scheme === 'https' ? relative(path.dirname(ENVS.admin), CERT) : '',
+    VITE_API_URL: `${api(scheme)}/api`,
+    VITE_STOREFRONT_URL: site(scheme),
+  }),
+});
 
-  const changed = {
-    server: setValues(ENVS.server, {
-      SSL_KEY_PATH: relative(path.dirname(ENVS.server), KEY),
-      SSL_CERT_PATH: relative(path.dirname(ENVS.server), CERT),
-      BACKEND_URL: API('https'),
-      FRONTEND_URL: SITE('https'),
-      ADMIN_URL: ADMIN('https'),
-      SITE_URL: SITE('https'),
-      COOKIE_SECURE: 'true',
-    }),
-    client: setValues(ENVS.client, {
-      SSL_KEY_PATH: relative(path.dirname(ENVS.client), KEY),
-      SSL_CERT_PATH: relative(path.dirname(ENVS.client), CERT),
-      VITE_API_URL: `${API('https')}/api`,
-      VITE_SITE_URL: SITE('https'),
-    }),
-    admin: setValues(ENVS.admin, {
-      SSL_KEY_PATH: relative(path.dirname(ENVS.admin), KEY),
-      SSL_CERT_PATH: relative(path.dirname(ENVS.admin), CERT),
-      VITE_API_URL: `${API('https')}/api`,
-      VITE_STOREFRONT_URL: SITE('https'),
-    }),
-  };
-
+const report = (changed) => {
   Object.entries(changed).forEach(([app, keys]) => {
     console.log(keys.length ? `✓ ${app}/.env: set ${keys.join(', ')}` : `· ${app}/.env: already set`);
   });
+};
+
+const portOf = (url) => new URL(url).port || '443';
+
+const turnOn = async (origins) => {
+  await generate();
+  report(apply('https', origins));
 
   console.log('\nHTTPS is on. Restart `npm run dev`, then open:');
-  console.log(`  storefront  ${SITE('https')}`);
-  console.log(`  admin       ${ADMIN('https')}`);
-  console.log(`  API         ${API('https')}/api/health`);
+  console.log(`  storefront  ${origins.site('https')}`);
+  console.log(`  admin       ${origins.admin('https')}`);
+  console.log(`  API         ${origins.api('https')}/api/health`);
+
+  const ports = [origins.site, origins.admin, origins.api].map((o) => portOf(o('https')));
   console.log('\nYour browser will warn about the certificate the first time — that is expected');
-  console.log('for a self-signed one. Accept it once per port (5173, 5174 and 5000).');
+  console.log(`for a self-signed one. Accept it once per port (${ports.join(', ')}).`);
   console.log('\nTo go back:  npm run ssl:dev -- off\n');
 };
 
-const turnOff = () => {
-  setValues(ENVS.server, {
-    SSL_KEY_PATH: '', SSL_CERT_PATH: '',
-    BACKEND_URL: API('http'), FRONTEND_URL: SITE('http'), ADMIN_URL: ADMIN('http'),
-    SITE_URL: SITE('http'), COOKIE_SECURE: 'false',
-  });
-  setValues(ENVS.client, {
-    SSL_KEY_PATH: '', SSL_CERT_PATH: '',
-    VITE_API_URL: `${API('http')}/api`, VITE_SITE_URL: SITE('http'),
-  });
-  setValues(ENVS.admin, {
-    SSL_KEY_PATH: '', SSL_CERT_PATH: '',
-    VITE_API_URL: `${API('http')}/api`, VITE_STOREFRONT_URL: SITE('http'),
-  });
-
-  console.log('✓ HTTPS off — all three apps are back on http. Restart `npm run dev`.');
+const turnOff = (origins) => {
+  report(apply('http', origins));
+  console.log('\n✓ HTTPS off — all three apps are back on http. Restart `npm run dev`.');
   console.log('  The certificate is left in server/certs; delete it to start fresh.\n');
 };
 
-const main = () => {
+const main = async () => {
   const off = process.argv.slice(2).some((arg) => /^(--)?off$/.test(arg));
 
   const missing = missingEnvs();
   if (missing.length) {
     console.error(`\nMissing ${missing.map((m) => `${m}/.env`).join(', ')}. Run \`npm run setup\` first.\n`);
-    process.exit(1);
+    return process.exit(1);
   }
 
   console.log('\nFresh Meat Nepal — local HTTPS\n');
-  return off ? turnOff() : turnOn();
+
+  // Read the ports before anything is rewritten: turning HTTPS off has to find
+  // the same host and port that turning it on wrote.
+  const origins = readOrigins();
+  return off ? turnOff(origins) : turnOn(origins);
 };
 
-main();
+main().catch((err) => {
+  console.error(`\n${err.stack || err.message}\n`);
+  process.exit(1);
+});

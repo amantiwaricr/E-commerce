@@ -19,7 +19,8 @@
     "ssl:dev": "node scripts/ssl-dev.js"
   },
   "devDependencies": {
-    "npm-run-all": "^4.1.5"
+    "npm-run-all": "^4.1.5",
+    "selfsigned": "^5.5.0"
   },
   "engines": {
     "node": ">=18.0.0"

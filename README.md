@@ -807,11 +807,22 @@ certificate paths, URLs and `COOKIE_SECURE` across `server/.env`, `client/.env` 
 all on `https://localhost` — the Vite dev servers included, which is what puts the
 padlock in the address bar rather than only encrypting the API calls.
 
-Your browser will warn about the certificate the first time, once per port (5173, 5174,
-5000). That is what a self-signed certificate is: nothing vouches for it. Accepting it
-locally is the point — it lets you exercise `secure` cookies, the HTTP→HTTPS redirect
-and `SameSite=None` on your own machine instead of discovering them in production.
-Production certificates come from a CA, and Let's Encrypt is free and automatic.
+The certificate is made in Node, so there is nothing to install first: it works the same
+in PowerShell, the Windows command prompt, Git Bash and a Unix shell. The API's port is
+read from `PORT` in `server/.env` rather than assumed, so the URLs it writes match the
+port the server actually listens on.
+
+Your browser will warn about the certificate the first time, once per port (5173, 5174
+and whatever `PORT` is). That is what a self-signed certificate is: nothing vouches for
+it. Accepting it locally is the point — it lets you exercise `secure` cookies, the
+HTTP→HTTPS redirect and `SameSite=None` on your own machine instead of discovering them
+in production. Production certificates come from a CA, and Let's Encrypt is free and
+automatic.
+
+HSTS is deliberately **not** sent in development. `Strict-Transport-Security` is set per
+host, not per port, so one from `localhost` would force every other local project on
+`localhost` onto HTTPS for a year. It turns on with `FORCE_HTTPS`, which defaults to on
+in production and off everywhere else.
 
 `npm run doctor` reports what each of the three is actually serving.
 
