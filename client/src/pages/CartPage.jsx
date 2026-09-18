@@ -5,8 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import EmptyState from '../components/EmptyState';
 import QuantityStepper from '../components/QuantityStepper';
 import { formatNpr } from '../utils/format';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function CartPage() {
+  useSeo({ ...seoFor('/cart'), path: '/cart' });
+
   const { cart, updateItem, removeItem, clearCart, loading, deliveryMethod } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -14,6 +18,7 @@ export default function CartPage() {
   if (!cart.items.length) {
     return (
       <div className="container page">
+        <h1 className="sr-only">Your cart</h1>
         <EmptyState
           title="Your cart is empty"
           message="Add some fresh cuts and they will show up here."

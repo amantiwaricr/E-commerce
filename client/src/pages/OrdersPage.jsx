@@ -8,8 +8,12 @@ import StatusBadge from '../components/StatusBadge';
 import InvoiceButton from '../components/InvoiceButton';
 import { formatDate, formatNpr } from '../utils/format';
 import { PAYMENT_METHOD_LABELS } from '../config';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function OrdersPage() {
+  useSeo({ ...seoFor('/orders'), path: '/orders' });
+
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1 });
   const [page, setPage] = useState(1);

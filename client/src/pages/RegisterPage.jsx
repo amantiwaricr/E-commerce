@@ -4,8 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import PasswordField from '../components/PasswordField';
 import { STORE_NAME } from '../config';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function RegisterPage() {
+  useSeo({ ...seoFor('/register'), path: '/register' });
+
   const { isAuthenticated, loading, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

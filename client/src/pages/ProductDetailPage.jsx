@@ -6,7 +6,18 @@ import EmptyState from '../components/EmptyState';
 import QuantityStepper from '../components/QuantityStepper';
 import TrustStrip from '../components/TrustStrip';
 import { useCart } from '../context/CartContext';
+import useSeo from '../hooks/useSeo';
+import { breadcrumbs, product as productSchema } from '../seo/schema';
 import { formatNpr } from '../utils/format';
+
+/** Search results truncate around 160 characters; write to that, don't be cut off at it. */
+const metaDescription = (item) => {
+  const opening = `${item.name} — ${formatNpr(item.price)} per ${item.unit}.`;
+  const detail = String(item.description || '').replace(/\s+/g, ' ').trim();
+  const room = 155 - opening.length;
+  const tail = detail.length > room ? `${detail.slice(0, room - 1).trimEnd()}…` : detail;
+  return `${opening} ${tail}`.trim();
+};
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
@@ -17,6 +28,32 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  /*
+   * Runs on every render, product or not: a hook cannot be called
+   * conditionally, and the early returns below would skip it. With no product
+   * it sets nothing but the fallback title.
+   */
+  useSeo(
+    product
+      ? {
+          title: product.name,
+          description: metaDescription(product),
+          path: `/products/${product.slug}`,
+          image: product.images?.[0],
+          type: 'product',
+          jsonLd: [
+            productSchema(product),
+            breadcrumbs([
+              { name: 'Home', path: '/' },
+              { name: 'Meat Market', path: '/shop' },
+              { name: product.category, path: `/shop?category=${encodeURIComponent(product.category)}` },
+              { name: product.name, path: `/products/${product.slug}` },
+            ]),
+          ],
+        }
+      : { title: 'Loading…', noIndex: true }
+  );
 
   useEffect(() => {
     setLoading(true);

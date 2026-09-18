@@ -3,10 +3,14 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import CodeInput from '../components/CodeInput';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 const CODE_LENGTH = 4;
 
 export default function VerifyEmailPage() {
+  useSeo({ ...seoFor('/verify'), path: '/verify' });
+
   const { verifyEmail, resendCode } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();

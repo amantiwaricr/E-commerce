@@ -1,6 +1,10 @@
 import { Link, useSearchParams } from 'react-router-dom';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function PaymentFailedPage() {
+  useSeo({ ...seoFor('/checkout/failed'), path: '/checkout/failed' });
+
   const [searchParams] = useSearchParams();
   const reason = searchParams.get('reason');
   const orderNumber = searchParams.get('order');

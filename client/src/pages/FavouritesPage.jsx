@@ -5,8 +5,12 @@ import EmptyState from '../components/EmptyState';
 import Loader from '../components/Loader';
 import { useAuth } from '../context/AuthContext';
 import { useFavourites } from '../context/FavouritesContext';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function FavouritesPage() {
+  useSeo({ ...seoFor('/favourites'), path: '/favourites' });
+
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { ids } = useFavourites();
   const [products, setProducts] = useState([]);

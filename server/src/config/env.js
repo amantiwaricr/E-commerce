@@ -56,6 +56,9 @@ const env = {
   backendUrl: (process.env.BACKEND_URL || 'http://localhost:5000').replace(/\/$/, ''),
   // The admin panel is a separate app served from its own origin.
   adminUrl: (process.env.ADMIN_URL || 'http://localhost:5174').replace(/\/$/, ''),
+  /* Where the storefront actually lives. The sitemap and robots.txt are built
+     from it, so in production it must be the public https:// address. */
+  siteUrl: (process.env.SITE_URL || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, ''),
 
   mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fresh-meat-nepal',
 

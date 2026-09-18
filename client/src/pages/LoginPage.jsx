@@ -5,8 +5,12 @@ import { useToast } from '../context/ToastContext';
 import Loader from '../components/Loader';
 import PasswordField from '../components/PasswordField';
 import { STORE_NAME } from '../config';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function LoginPage() {
+  useSeo({ ...seoFor('/login'), path: '/login' });
+
   const { isAuthenticated, loading, login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();

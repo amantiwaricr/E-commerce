@@ -15,6 +15,7 @@ const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { enforceHttps, hstsOptions } = require('./middleware/https');
+const seoController = require('./controllers/seo.controller');
 
 const createApp = () => {
   const app = express();
@@ -65,6 +66,11 @@ const createApp = () => {
   app.use('/uploads', express.static(path.resolve(__dirname, '../uploads'), { maxAge: '7d' }));
 
   app.use('/api', apiLimiter, routes);
+
+  // Crawler files live at the root, not under /api, because that is the only
+  // place a crawler looks for them.
+  app.get('/sitemap.xml', seoController.sitemap);
+  app.get('/robots.txt', seoController.robots);
 
   app.get('/', (req, res) => res.json({ success: true, message: `${env.store.name} API`, docs: '/api/health' }));
 

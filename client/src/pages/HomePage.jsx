@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
+import { organisation, website } from '../seo/schema';
 import api from '../api/client';
 import {
   ArrowRight, CartIcon, ClockIcon, FarmIcon, LeafIcon, PhoneIcon, PinIcon,
@@ -29,6 +32,13 @@ const STEPS = [
 export default function HomePage() {
   const navigate = useNavigate();
   const { hash } = useLocation();
+
+  useSeo({
+    ...seoFor('/'),
+    path: '/',
+    // Two graphs on the home page: who the shop is, and what the site is.
+    jsonLd: [organisation(), website()],
+  });
   const { addItem } = useCart();
   const { user, isAuthenticated } = useAuth();
 

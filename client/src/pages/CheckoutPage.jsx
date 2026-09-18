@@ -8,6 +8,8 @@ import EmptyState from '../components/EmptyState';
 import Loader from '../components/Loader';
 import { formatNpr } from '../utils/format';
 import { submitEsewaForm } from '../utils/esewa';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 const BLANK_ADDRESS = {
   recipientName: '',
@@ -20,6 +22,8 @@ const BLANK_ADDRESS = {
 };
 
 export default function CheckoutPage() {
+  useSeo({ ...seoFor('/checkout'), path: '/checkout' });
+
   const { user, refreshUser } = useAuth();
   const { cart, refreshCart, deliveryMethod } = useCart();
   const toast = useToast();

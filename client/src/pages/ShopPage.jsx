@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
+import { breadcrumbs, itemList } from '../seo/schema';
 import api from '../api/client';
 import CategoryChips from '../components/CategoryChips';
 import ProductCard from '../components/ProductCard';
@@ -40,6 +43,33 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  /*
+   * A filtered view is a different page to a shopper and should read as one in
+   * a search result — but only the unfiltered listing is worth indexing, and
+   * every variation canonicalises to it. Otherwise one catalogue becomes
+   * hundreds of near-identical URLs competing with each other.
+   */
+  const category = searchParams.get('category') || '';
+  const search = searchParams.get('search') || '';
+  const base = seoFor('/shop');
+
+  useSeo({
+    title: category ? `${category} — fresh ${category.toLowerCase()} delivered` : base.title,
+    description: category
+      ? `Buy ${category.toLowerCase()} online in the Kathmandu Valley. Cut to order, delivered chilled the same day, or collect at our Balkumari counter.`
+      : base.description,
+    path: '/shop',
+    noIndex: Boolean(search),
+    jsonLd: [
+      breadcrumbs([
+        { name: 'Home', path: '/' },
+        { name: 'Meat Market', path: '/shop' },
+        ...(category ? [{ name: category, path: `/shop?category=${encodeURIComponent(category)}` }] : []),
+      ]),
+      ...(products.length ? [itemList(products)] : []),
+    ],
+  });
 
   // The URL is the single source of truth, so every view is shareable.
   const filters = useMemo(
@@ -100,6 +130,12 @@ export default function ShopPage() {
 
   return (
     <>
+      {/* Every page needs one heading that names it. The chips below carry the
+          visible hierarchy, so this one is for crawlers and screen readers. */}
+      <h1 className="sr-only">
+        {filters.category ? `${filters.category} — fresh meat delivered in Kathmandu` : 'Meat Market — buy fresh meat online'}
+      </h1>
+
       <CategoryChips value={filters.category} onChange={(category) => patch({ category })} />
 
       <button type="button" className="btn secondary sm filter-toggle" onClick={() => setFiltersOpen((v) => !v)}>

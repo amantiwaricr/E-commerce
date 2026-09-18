@@ -4,8 +4,12 @@ import { useToast } from '../context/ToastContext';
 import { Avatar } from '../components/AccountMenu';
 import PasswordField from '../components/PasswordField';
 import { formatDay } from '../utils/format';
+import useSeo from '../hooks/useSeo';
+import { seoFor } from '../seo/pages';
 
 export default function ProfilePage() {
+  useSeo({ ...seoFor('/profile'), path: '/profile' });
+
   const { user, updateProfile, uploadAvatar, changePassword } = useAuth();
   const toast = useToast();
   const fileInput = useRef(null);

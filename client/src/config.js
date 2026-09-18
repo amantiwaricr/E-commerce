@@ -3,6 +3,16 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/ap
 /** Vite sets this only when running `npm run dev`, never in a production build. */
 export const IS_DEV = Boolean(import.meta.env.DEV);
 
+/**
+ * The site's own public address. Canonical URLs, Open Graph tags and the
+ * sitemap all need an absolute URL, and a relative one is worse than none:
+ * search engines and social crawlers simply drop it.
+ */
+export const SITE_URL = (import.meta.env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '');
+
+/** Wide image used when a page is shared on social media (1200×630 works everywhere). */
+export const SOCIAL_IMAGE = import.meta.env.VITE_SOCIAL_IMAGE || `${SITE_URL}/social-card.png`;
+
 export const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Fresh Meat Nepal';
 export const SUPPORT_PHONE = import.meta.env.VITE_SUPPORT_PHONE || '+977-9800000000';
 export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'hello@freshmeatnepal.com';

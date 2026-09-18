@@ -692,7 +692,48 @@ Order statuses move `pending → confirmed → processing → shipped → delive
 
 ---
 
-## 13. Security notes
+## 13. SEO
+
+Lighthouse scores **100 on SEO** for every public route (home, catalogue, product,
+sign-in, register), measured against the production build.
+
+**Per-page tags.** `useSeo` sets the title, description, canonical URL, Open Graph and
+Twitter tags for each route and puts them back on unmount. Pages behind a sign-in —
+cart, checkout, orders, profile — send `noindex`, along with the 404 and any search
+results page. Lighthouse marks a `noindex` page down, which is correct behaviour on its
+part and the right call on ours: a basket has nothing to offer an index.
+
+**Crawlers that do not run JavaScript.** This is a single-page app, so the server sends
+one nearly-empty HTML file. Google runs the JavaScript before indexing and sees the real
+tags; Facebook, LinkedIn, WhatsApp and Slack do not, and would show the same title for
+every link on the site. So `npm run build` runs `scripts/prerender.js`, which writes a
+real HTML file per static route — `dist/shop/index.html` and so on — with that route's
+title, description, canonical and Open Graph tags in the markup. Static hosts serve them
+without configuration. Both the script and the app read `src/seo/pages.js`, so the two
+cannot drift apart.
+
+Product pages come from the database and cannot be pre-rendered this way. They are
+covered by the sitemap, and Google renders them correctly.
+
+**Structured data.** JSON-LD built from the real record, in `src/seo/schema.js`:
+`Butcher` and `WebSite` on the home page, `Product` with an `Offer` on each product,
+`BreadcrumbList` throughout, and `ItemList` on the catalogue. A rating is only ever
+emitted when there are reviews behind it — an invented one earns a manual penalty.
+Stock state drives `availability`, so a result never promises something sold out.
+
+**robots.txt and sitemap.xml.** The API serves both at its root, with the sitemap built
+from the live catalogue and cached for an hour; the build also writes a `robots.txt`
+into `dist` for the site's own host. Both need absolute URLs, which is what `SITE_URL`
+(server) and `VITE_SITE_URL` (client) are for.
+
+> **Before you deploy:** set `VITE_SITE_URL` and `SITE_URL` to the real `https://`
+> address. Left at `localhost`, every canonical URL, Open Graph tag and sitemap entry
+> points at a machine nobody else can reach. The build prints a warning when it spots
+> this.
+
+---
+
+## 14. Security notes
 
 - Passwords are bcrypt-hashed (cost 12) and the hash is never selected into a response.
 - A sign-in failure gives one message for a wrong password and an unknown address, so

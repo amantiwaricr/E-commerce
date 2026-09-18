@@ -76,13 +76,13 @@ export default function TopBar() {
 
         <NavLink to="/favourites" className={({ isActive }) => `top-action ${isActive ? 'active' : ''}`}>
           <HeartIcon width={20} height={20} filled={ids.length > 0} />
-          <span className="sr-only">Favourites</span>
+          <span className="label">Favourites</span>
         </NavLink>
 
         <NavLink to="/cart" className={({ isActive }) => `top-action ${isActive ? 'active' : ''}`}>
           <CartIcon width={20} height={20} />
           {itemCount > 0 && <span className="count-badge">{itemCount}</span>}
-          <span className="sr-only">Cart</span>
+          <span className="label">Cart</span>
         </NavLink>
 
         <ThemeToggle />
