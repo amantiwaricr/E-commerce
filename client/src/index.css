@@ -990,3 +990,246 @@ tbody tr:hover { background: var(--row-hover); }
 }
 .saved-address.on .tickdot { border-color: var(--violet); box-shadow: inset 0 0 0 3px var(--violet); }
 .saved-address .badge { margin-left: auto; flex-shrink: 0; }
+
+/* ══ My orders ═══════════════════════════════════════════════
+   A list of orders answers three questions at a glance: how far along is
+   each one, what was in it, and what can I do about it now. The table this
+   replaced could only answer the middle one, and only as a number. */
+
+.orders-head { margin-bottom: 18px; }
+.orders-head h1 { margin: 0 0 4px; font-size: 1.35rem; }
+.orders-head p { margin: 0; font-size: .88rem; max-width: 60ch; }
+
+.orders-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.ostat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+}
+.ostat-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: var(--violet-soft);
+  color: var(--accent-ink);
+}
+.ostat-body { min-width: 0; }
+.ostat-body b { display: block; font-size: 1.12rem; font-weight: 800; line-height: 1.2; }
+.ostat-body small { display: block; color: var(--ink-3); font-size: .74rem; margin-top: 2px; }
+
+.orders-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.orders-tabs::-webkit-scrollbar { display: none; }
+.otab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--night-2);
+  color: var(--ink-2);
+  font-size: .84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.otab:hover { border-color: var(--violet-line); color: var(--ink); }
+.otab.on { background: var(--violet); border-color: var(--violet); color: var(--on-accent); }
+.otab:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.otab-count {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--night-4);
+  color: var(--ink-2);
+}
+.otab.on .otab-count { background: rgba(255, 255, 255, .22); color: var(--on-accent); }
+
+/* min-width: 0 on every level between the grid and the truncating line. A
+   grid or flex item defaults to min-width: auto, which refuses to shrink below
+   its content — so one long nowrap product line widened the card past the
+   viewport and clipped the badges and buttons off the right edge. */
+.orders-list { display: grid; gap: 14px; min-width: 0; }
+
+.ocard {
+  background: var(--night-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px 18px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ocard:hover { border-color: var(--violet-line); box-shadow: var(--shadow-card); }
+.ocard-skeleton { gap: 12px; }
+
+.ocard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ocard-number { font-size: .98rem; font-weight: 800; color: var(--ink); text-decoration: none; letter-spacing: .01em; }
+.ocard-number:hover { color: var(--accent-ink); }
+.ocard-meta { margin: 3px 0 0; font-size: .78rem; color: var(--ink-3); }
+.ocard-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.ocard-badges .badge { text-transform: capitalize; }
+
+.ocard-items { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.ocard-thumbs { display: flex; flex-shrink: 0; }
+.ocard-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--night-3);
+  border: 2px solid var(--night-2);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+/* Overlapped rather than spaced: four thumbnails read as one order, and the
+   row stays the same width whether there are two items or nine. */
+.ocard-thumb + .ocard-thumb { margin-left: -12px; }
+.ocard-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ocard-thumb .noimg { width: 100%; height: 100%; background: var(--night-4); }
+.ocard-thumb.more {
+  background: var(--violet-soft);
+  color: var(--accent-ink);
+  font-size: .74rem;
+  font-weight: 800;
+}
+.ocard-names {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  font-size: .86rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── the delivery rail ──────────────────────────────────────── */
+.oprog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  position: relative;
+}
+/* The rail sits behind the marks, from the centre of the first to the centre
+   of the last, so it never pokes out past either end. */
+.oprog::before,
+.oprog::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: calc(100% / var(--oprog-steps, 5) / 2);
+  right: calc(100% / var(--oprog-steps, 5) / 2);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--night-4);
+}
+/* --oprog-fill is a unitless 0–1 fraction, not a percentage: calc() can
+   multiply a length by a number but cannot divide one percentage by another. */
+.oprog::after {
+  right: auto;
+  width: calc((100% - (100% / var(--oprog-steps, 5))) * var(--oprog-fill, 0));
+  background: var(--violet);
+  transition: width .35s ease;
+}
+.oprog li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  min-width: 0;
+}
+.oprog-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--night-2);
+  border: 2px solid var(--night-4);
+  display: grid;
+  place-items: center;
+  color: var(--on-accent);
+  position: relative;
+  z-index: 1;
+}
+.oprog li.done .oprog-mark { background: var(--violet); border-color: var(--violet); }
+.oprog li.current .oprog-mark {
+  background: var(--night-2);
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--violet-soft);
+}
+.oprog-label { font-size: .72rem; color: var(--ink-3); line-height: 1.25; }
+.oprog li.done .oprog-label { color: var(--ink-2); }
+.oprog li.current .oprog-label { color: var(--accent-ink); font-weight: 700; }
+
+.oprog.cancelled {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: .82rem;
+  color: var(--danger-ink);
+  background: var(--tint-danger);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+.oprog.cancelled::before, .oprog.cancelled::after { content: none; }
+.oprog-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+
+.ocard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+  padding-top: 13px;
+}
+.ocard-when { margin: 0; min-width: 0; display: flex; align-items: center; gap: 7px; font-size: .82rem; color: var(--ink-2); }
+.ocard-when svg { color: var(--accent-ink); flex-shrink: 0; }
+.ocard-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ocard-total { font-size: 1.05rem; font-weight: 800; color: var(--accent-ink); margin-right: 4px; }
+
+@media (max-width: 900px) {
+  .orders-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .ocard-foot { flex-direction: column; align-items: stretch; }
+  .ocard-actions { justify-content: space-between; }
+  .ocard-total { margin-right: auto; }
+  /* Labels stack badly at this width; the marks alone still show progress. */
+  .oprog-label { font-size: .66rem; }
+}
+
+@media (max-width: 420px) {
+  /* Four tiles stacked one per row push the orders themselves below the fold,
+     which is the wrong thing to make someone scroll past. */
+  .orders-stats { gap: 8px; }
+  .ostat { padding: 11px 12px; gap: 9px; }
+  .ostat-icon { width: 30px; height: 30px; border-radius: 9px; }
+  .ostat-body b { font-size: .98rem; }
+  .oprog li:not(.current):not(.done) .oprog-label { display: none; }
+}
+
+@media (max-width: 330px) {
+  .orders-stats { grid-template-columns: 1fr; }
+}

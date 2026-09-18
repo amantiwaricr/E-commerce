@@ -14,6 +14,7 @@ const { keyFor } = require('../utils/idempotency');
 const esewaService = require('../services/esewa.service');
 const { sendOrderConfirmation } = require('../services/notification.service');
 const { buildInvoice, renderInvoicePdf } = require('../services/invoice.service');
+const { statusCondition, summariseOrders } = require('../utils/orderQuery');
 const User = require('../models/User');
 
 /** Payment methods that are settled online through eSewa. */
@@ -195,16 +196,19 @@ const listMyOrders = asyncHandler(async (req, res) => {
   const limit = Math.min(50, Math.max(1, Number(query.limit) || 10));
 
   const filter = { user: req.user._id };
-  if (query.status) filter.orderStatus = query.status;
+  const status = statusCondition(query.status);
+  if (status) filter.orderStatus = status;
 
-  const [orders, total] = await Promise.all([
+  const [orders, total, summary] = await Promise.all([
     Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     Order.countDocuments(filter),
+    summariseOrders(req.user._id),
   ]);
 
   return res.json({
     success: true,
     orders,
+    summary,
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
   });
 });
