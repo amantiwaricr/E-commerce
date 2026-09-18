@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { seoFiles } from './scripts/seo-files.js';
+
 /**
  * Serves the dev server over HTTPS when a certificate is configured.
  *
@@ -32,6 +34,39 @@ const devHttps = (env) => {
 };
 
 
+/**
+ * Serves /robots.txt and /sitemap.xml from the dev server.
+ *
+ * Vite serves the SPA's index.html for anything it does not recognise, so
+ * without this an auditor asking for /robots.txt gets a page of HTML — which
+ * reads as a broken robots.txt, not a missing one. Production gets the same two
+ * files written into dist/ by the prerender step, from the same builder.
+ */
+const seoRoutes = (env) => ({
+  name: 'fresh-meat-seo-routes',
+  configureServer(server) {
+    const siteUrl = () => {
+      const address = server.httpServer?.address();
+      if (env.VITE_SITE_URL) return env.VITE_SITE_URL;
+      // Before anything is configured, describe the port actually being served.
+      const scheme = server.config.server.https ? 'https' : 'http';
+      return address ? `${scheme}://localhost:${address.port}` : 'http://localhost:5173';
+    };
+
+    server.middlewares.use(async (req, res, next) => {
+      const route = (req.url || '').split('?')[0];
+      if (route !== '/robots.txt' && route !== '/sitemap.xml') return next();
+
+      const files = await seoFiles({ siteUrl: siteUrl(), apiUrl: env.VITE_API_URL });
+      const xml = route === '/sitemap.xml';
+      res.setHeader('Content-Type', xml ? 'application/xml; charset=utf-8' : 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.statusCode = 200;
+      return res.end(xml ? files.sitemap : files.robots);
+    });
+  },
+});
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
@@ -45,7 +80,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react()],
+    plugins: [react(), seoRoutes(env)],
     server: {
       port: 5173,
       https: devHttps(env),

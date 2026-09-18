@@ -20,14 +20,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadEnv } from 'vite';
+
 import { STATIC_PAGES } from '../src/seo/pages.js';
+import { seoFiles } from './seo-files.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const dist = path.resolve(here, '../dist');
+const root = path.resolve(here, '..');
+const dist = path.join(root, 'dist');
 
-const SITE_URL = (process.env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '');
-const STORE_NAME = process.env.VITE_STORE_NAME || 'Fresh Meat Nepal';
-const SOCIAL_IMAGE = process.env.VITE_SOCIAL_IMAGE || `${SITE_URL}/social-card.png`;
+/*
+ * Read client/.env the same way Vite does. This script runs as a plain node
+ * process after `vite build`, so process.env holds none of it — every canonical
+ * URL, Open Graph URL and sitemap entry was being baked as http://localhost:5173
+ * unless the variables happened to be exported into the shell by hand.
+ */
+const env = { ...loadEnv('production', root, ''), ...process.env };
+
+const SITE_URL = (env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '');
+const STORE_NAME = env.VITE_STORE_NAME || 'Fresh Meat Nepal';
+const SOCIAL_IMAGE = env.VITE_SOCIAL_IMAGE || `${SITE_URL}/social-card.png`;
 
 const escapeAttr = (value = '') =>
   String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -65,22 +77,7 @@ const render = (template, routePath, page) =>
     .replace(/<meta\s+name="description"[\s\S]*?\/>\s*/i, '')
     .replace('</head>', `  ${headFor(routePath, page)}\n  </head>`);
 
-const robotsTxt = () =>
-  [
-    'User-agent: *',
-    'Disallow: /checkout',
-    'Disallow: /cart',
-    'Disallow: /orders',
-    'Disallow: /profile',
-    'Disallow: /favourites',
-    'Disallow: /verify',
-    'Allow: /',
-    '',
-    `Sitemap: ${process.env.VITE_SITEMAP_URL || `${SITE_URL}/sitemap.xml`}`,
-    '',
-  ].join('\n');
-
-const run = () => {
+const run = async () => {
   const indexPath = path.join(dist, 'index.html');
   if (!fs.existsSync(indexPath)) {
     console.error('dist/index.html is missing — run `vite build` first.');
@@ -98,9 +95,17 @@ const run = () => {
     written += 1;
   }
 
-  fs.writeFileSync(path.join(dist, 'robots.txt'), robotsTxt());
+  const { robots, sitemap, complete } = await seoFiles({ siteUrl: SITE_URL, apiUrl: env.VITE_API_URL });
+  fs.writeFileSync(path.join(dist, 'robots.txt'), robots);
+  fs.writeFileSync(path.join(dist, 'sitemap.xml'), sitemap);
 
-  console.log(`  prerendered ${written} routes and wrote robots.txt (site: ${SITE_URL})`);
+  const urls = (sitemap.match(/<loc>/g) || []).length;
+  console.log(`  prerendered ${written} routes, robots.txt and sitemap.xml (${urls} urls, site: ${SITE_URL})`);
+  if (!complete) {
+    console.log('  ! the API was not reachable, so the sitemap holds only the static routes.');
+    console.log('    Product pages are still discoverable through the API sitemap, which');
+    console.log('    robots.txt lists as a second Sitemap: line.');
+  }
   if (SITE_URL.includes('localhost')) {
     console.log('  ! VITE_SITE_URL is localhost — set it to the public address before deploying.');
   }
