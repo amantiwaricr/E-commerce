@@ -798,6 +798,7 @@ moved to HTTPS.
 
 ```bash
 npm run ssl:dev          # generate a certificate and switch all three apps to https
+npm run ssl:status       # why is it still http? — checks every link in the chain
 npm run ssl:dev -- off   # switch back
 ```
 
@@ -823,6 +824,24 @@ HSTS is deliberately **not** sent in development. `Strict-Transport-Security` is
 host, not per port, so one from `localhost` would force every other local project on
 `localhost` onto HTTPS for a year. It turns on with `FORCE_HTTPS`, which defaults to on
 in production and off everywhere else.
+
+**Still seeing `http://` after switching?** `npm run ssl:status` checks each link in the
+chain separately: the certificate exists and has not expired, each `.env` holds the paths,
+those paths resolve to a real file *from the directory that reads them*, and no `.env.local`
+or `.env.development` is quietly overriding `.env` (Vite reads those after it, so they win).
+
+The usual answer, though, is that the previous dev server never died. It keeps port 5173,
+the new one moves to 5174 or 5175 without much fuss, and the tab you are looking at is
+still being served plain HTTP by the process that started before the certificate existed —
+Ctrl+C in a `--parallel` runner does not reliably take its children with it. `npm run
+ssl:dev` now warns when those ports are still occupied. To clear them:
+
+```powershell
+Get-Process node | Stop-Process -Force     # Windows
+```
+```bash
+pkill -f vite; pkill -f "node src/index.js"  # macOS / Linux
+```
 
 `npm run doctor` reports what each of the three is actually serving.
 

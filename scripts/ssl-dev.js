@@ -20,6 +20,7 @@
  */
 
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
 
 const { readEnvFile, setValues } = require('./env-file');
@@ -174,6 +175,37 @@ const report = (changed) => {
 
 const portOf = (url) => new URL(url).port || '443';
 
+/** Whether something is already listening — i.e. an old `npm run dev` is still up. */
+const portBusy = (port) =>
+  new Promise((resolve) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port });
+    const done = (busy) => { socket.destroy(); resolve(busy); };
+    socket.setTimeout(700);
+    socket.on('connect', () => done(true));
+    socket.on('timeout', () => done(false));
+    socket.on('error', () => done(false));
+  });
+
+/**
+ * The single most common reason "it still says http" after switching: the old
+ * dev server never died. It keeps the port, the new one silently moves to
+ * another, and the browser tab is still being served plain HTTP by the process
+ * that started before the certificate existed. Ctrl+C in a `--parallel` runner
+ * does not reliably take its children with it, least of all on Windows.
+ */
+const warnAboutRunningServers = async (origins) => {
+  const ports = [...new Set([origins.site, origins.admin, origins.api].map((o) => portOf(o('https'))))];
+  const busy = [];
+  for (const port of ports) if (await portBusy(Number(port))) busy.push(port);
+  if (!busy.length) return;
+
+  console.log(`\n! Something is already listening on port ${busy.join(', ')}.`);
+  console.log('  That is the old dev server, and it is still serving plain HTTP. Stop it');
+  console.log('  before starting again, or you will keep seeing http:// in the browser:');
+  console.log('    Windows      Get-Process node | Stop-Process -Force');
+  console.log('    macOS/Linux  pkill -f vite; pkill -f "node src/index.js"');
+};
+
 const turnOn = async (origins) => {
   await generate();
   report(apply('https', origins));
@@ -186,7 +218,11 @@ const turnOn = async (origins) => {
   const ports = [origins.site, origins.admin, origins.api].map((o) => portOf(o('https')));
   console.log('\nYour browser will warn about the certificate the first time — that is expected');
   console.log(`for a self-signed one. Accept it once per port (${ports.join(', ')}).`);
-  console.log('\nTo go back:  npm run ssl:dev -- off\n');
+
+  await warnAboutRunningServers(origins);
+
+  console.log('\nStill seeing http?  npm run ssl:status');
+  console.log('To go back:         npm run ssl:dev -- off\n');
 };
 
 const turnOff = (origins) => {
@@ -195,8 +231,115 @@ const turnOff = (origins) => {
   console.log('  The certificate is left in server/certs; delete it to start fresh.\n');
 };
 
+/*
+ * Everything below is the status report: `npm run ssl:dev -- status`.
+ *
+ * "It still says http" has several possible causes that look identical from
+ * the outside — the .env was never written, the certificate is missing, the
+ * paths in it do not resolve from the app that reads them, or another env file
+ * is quietly overriding the one that was written. Rather than guess, this
+ * prints each of those as a separate line.
+ */
+
+/** Vite reads all four, and the later ones win. A stale one silently overrides `.env`. */
+const VITE_ENV_FILES = ['.env', '.env.local', '.env.development', '.env.development.local'];
+
+const certificateReport = () => {
+  console.log('Certificate');
+  if (!fs.existsSync(KEY) || !fs.existsSync(CERT)) {
+    console.log('  ✗ server/certs is missing a key or certificate  → run `npm run ssl:dev`');
+    return;
+  }
+
+  const sizes = [['dev-key.pem', KEY], ['dev-cert.pem', CERT]];
+  for (const [label, file] of sizes) {
+    const bytes = fs.statSync(file).size;
+    if (bytes === 0) {
+      console.log(`  ✗ server/certs/${label} is empty  → delete server/certs and run \`npm run ssl:dev\``);
+      return;
+    }
+    console.log(`  ✓ server/certs/${label}  ${bytes} bytes`);
+  }
+
+  try {
+    const { X509Certificate } = require('crypto');
+    const x509 = new X509Certificate(fs.readFileSync(CERT));
+    const expired = new Date(x509.validTo) < new Date();
+    console.log(`  ${expired ? '✗' : '✓'} valid ${x509.validFrom} → ${x509.validTo}${expired ? '  (EXPIRED — delete server/certs and re-run)' : ''}`);
+    console.log(`  · names: ${x509.subjectAltName || '(none)'}`);
+  } catch (err) {
+    console.log(`  ✗ the certificate could not be parsed: ${err.message}`);
+  }
+};
+
+const appReport = (app, file) => {
+  const parsed = readEnvFile(file);
+  console.log(`\n${app}/.env`);
+  if (!parsed) {
+    console.log('  ✗ missing  → run `npm run setup`');
+    return;
+  }
+
+  const { values, encoding } = parsed;
+  console.log(`  · encoding: ${encoding}${encoding === 'utf-8' ? '' : '  (rewritten to UTF-8 on the next `ssl:dev` run)'}`);
+
+  const keys = app === 'server'
+    ? ['SSL_KEY_PATH', 'SSL_CERT_PATH', 'PORT', 'BACKEND_URL', 'FRONTEND_URL', 'ADMIN_URL', 'COOKIE_SECURE']
+    : ['SSL_KEY_PATH', 'SSL_CERT_PATH', 'VITE_API_URL'];
+  keys.forEach((key) => {
+    const value = values[key];
+    console.log(`  ${value ? '·' : '!'} ${key}=${value === undefined ? '(not set)' : value}`);
+  });
+
+  // The check Vite and the server both make: does the path actually resolve
+  // from *this* app's directory? A correct-looking value can still point at
+  // nothing, and both of them then fall back to plain HTTP.
+  const dir = path.dirname(file);
+  ['SSL_KEY_PATH', 'SSL_CERT_PATH'].forEach((key) => {
+    const value = values[key];
+    if (!value) return;
+    const full = path.isAbsolute(value) ? value : path.resolve(dir, value);
+    console.log(`  ${fs.existsSync(full) ? '✓' : '✗'} ${key} resolves to ${full}${fs.existsSync(full) ? '' : '  — NOT FOUND'}`);
+  });
+
+  if (app === 'server') return;
+
+  // Vite merges these in order, so a value in a later file beats the one
+  // `ssl:dev` wrote into `.env`.
+  VITE_ENV_FILES.slice(1).forEach((name) => {
+    const extra = readEnvFile(path.join(dir, name));
+    if (!extra) return;
+    const shadowed = Object.keys(extra.values).filter((k) => /^(SSL_|VITE_)/.test(k));
+    console.log(`  ! ${name} also exists and Vite reads it AFTER .env`);
+    if (shadowed.length) console.log(`      → it overrides: ${shadowed.join(', ')}`);
+  });
+};
+
+const status = () => {
+  console.log(`Node ${process.version} on ${process.platform}\n`);
+
+  try {
+    require.resolve('selfsigned');
+    console.log('✓ selfsigned is installed\n');
+  } catch {
+    console.log('✗ selfsigned is NOT installed  → run `npm install` in the project root\n');
+  }
+
+  certificateReport();
+  Object.entries(ENVS).forEach(([app, file]) => appReport(app, file));
+
+  console.log('\nEvery SSL_ line above must have a value and resolve to a file that exists.');
+  console.log('If any does not, run `npm run ssl:dev`, then restart `npm run dev`.\n');
+};
+
 const main = async () => {
-  const off = process.argv.slice(2).some((arg) => /^(--)?off$/.test(arg));
+  const args = process.argv.slice(2);
+  const off = args.some((arg) => /^(--)?off$/.test(arg));
+
+  if (args.some((arg) => /^(--)?status$/.test(arg))) {
+    console.log('\nFresh Meat Nepal — local HTTPS status\n');
+    return status();
+  }
 
   const missing = missingEnvs();
   if (missing.length) {
