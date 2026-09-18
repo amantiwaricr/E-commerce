@@ -206,9 +206,47 @@ const warnAboutRunningServers = async (origins) => {
   console.log('    macOS/Linux  pkill -f vite; pkill -f "node src/index.js"');
 };
 
+/**
+ * Re-reads what was just written and checks it is actually usable.
+ *
+ * Writing a file and assuming it took is how "it still says http" happens with
+ * every command apparently succeeding: the server and Vite both fall back to
+ * plain HTTP without complaint when a path does not resolve, so the failure
+ * only ever surfaces as an absence.
+ */
+const verifyWritten = () => {
+  const problems = [];
+  if (!fs.existsSync(KEY) || !fs.existsSync(CERT)) problems.push('the certificate is not in server/certs');
+
+  Object.entries(ENVS).forEach(([app, file]) => {
+    const values = valuesIn(file);
+    ['SSL_KEY_PATH', 'SSL_CERT_PATH'].forEach((key) => {
+      const value = values[key];
+      if (!value) {
+        problems.push(`${app}/.env has no ${key}`);
+        return;
+      }
+      const full = path.isAbsolute(value) ? value : path.resolve(path.dirname(file), value);
+      if (!fs.existsSync(full)) problems.push(`${app}/.env ${key} points at ${full}, which is not there`);
+    });
+  });
+
+  return problems;
+};
+
 const turnOn = async (origins) => {
   await generate();
   report(apply('https', origins));
+
+  const problems = verifyWritten();
+  if (problems.length) {
+    console.error('\n✗ HTTPS was NOT switched on. What is wrong:\n');
+    problems.forEach((problem) => console.error(`    ${problem}`));
+    console.error('\n  Nothing was left half-done on purpose — this check runs after the');
+    console.error('  writes precisely so the command cannot claim success it did not have.');
+    console.error('  Send me these lines and I will tell you what is blocking it.\n');
+    return process.exit(1);
+  }
 
   console.log('\nHTTPS is on. Restart `npm run dev`, then open:');
   console.log(`  storefront  ${origins.site('https')}`);
@@ -315,6 +353,64 @@ const appReport = (app, file) => {
   });
 };
 
+/**
+ * Turns the detail above into one sentence and one command.
+ *
+ * A list of ticks and crosses still leaves you to work out what it adds up to,
+ * and the states are not equally likely: by far the commonest is that HTTPS was
+ * simply never switched on here, which reads as a wall of failures when it is
+ * really one unrun command.
+ */
+const verdict = () => {
+  const haveCert = fs.existsSync(KEY) && fs.existsSync(CERT);
+  const apps = Object.entries(ENVS).map(([app, file]) => {
+    const values = valuesIn(file);
+    const key = values.SSL_KEY_PATH;
+    const cert = values.SSL_CERT_PATH;
+    const dir = path.dirname(file);
+    const resolves = (value) =>
+      Boolean(value) && fs.existsSync(path.isAbsolute(value) ? value : path.resolve(dir, value));
+    return { app, configured: Boolean(key && cert), resolves: resolves(key) && resolves(cert) };
+  });
+
+  const configured = apps.filter((a) => a.configured);
+  const broken = configured.filter((a) => !a.resolves).map((a) => a.app);
+
+  console.log('\n──────────────────────────────────────────────────────────────');
+  if (!haveCert && !configured.length) {
+    console.log('HTTPS is OFF. It has never been switched on in this copy of the');
+    console.log('project — there is no certificate and no app is pointed at one.');
+    console.log('\n  This is not a fault. Run the one command that turns it on:');
+    console.log('\n      npm run ssl:dev');
+    console.log('\n  then restart `npm run dev`. If ssl:dev prints an error, send me');
+    console.log('  that error — it is the thing standing in the way.');
+  } else if (!haveCert) {
+    console.log('HTTPS is half on: the .env files point at a certificate that is');
+    console.log('not there. Most likely server/certs was deleted after switching on.');
+    console.log('\n      npm run ssl:dev');
+  } else if (!configured.length) {
+    console.log('HTTPS is half on: the certificate exists but no .env points at it.');
+    console.log('\n      npm run ssl:dev');
+  } else if (broken.length) {
+    console.log(`HTTPS is half on: ${broken.join(' and ')} point at a file that is not there.`);
+    console.log('\n      rm -rf server/certs   (Windows: rmdir /s server\\certs)');
+    console.log('      npm run ssl:dev');
+  } else if (configured.length < apps.length) {
+    const rest = apps.filter((a) => !a.configured).map((a) => a.app).join(' and ');
+    console.log(`HTTPS is on for some apps but not ${rest}, so those stay on http.`);
+    console.log('\n      npm run ssl:dev');
+  } else {
+    console.log('HTTPS is fully configured — all three apps and a certificate that');
+    console.log('resolves. If the browser still shows http://, the config is not the');
+    console.log('problem: an older dev server is still holding the port.');
+    console.log('\n      Windows      Get-Process node | Stop-Process -Force');
+    console.log('      macOS/Linux  pkill -f vite; pkill -f "node src/index.js"');
+    console.log('\n  Then `npm run dev`, and check the port it prints is the one you');
+    console.log('  have open — if it says 5175 rather than 5173, something still has it.');
+  }
+  console.log('──────────────────────────────────────────────────────────────\n');
+};
+
 const status = () => {
   console.log(`Node ${process.version} on ${process.platform}\n`);
 
@@ -327,9 +423,7 @@ const status = () => {
 
   certificateReport();
   Object.entries(ENVS).forEach(([app, file]) => appReport(app, file));
-
-  console.log('\nEvery SSL_ line above must have a value and resolve to a file that exists.');
-  console.log('If any does not, run `npm run ssl:dev`, then restart `npm run dev`.\n');
+  verdict();
 };
 
 const main = async () => {

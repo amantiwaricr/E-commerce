@@ -20,6 +20,9 @@ const fs = require('fs');
 
 const LINE = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/;
 
+/** Marks a duplicate line for removal; no real .env line can look like this. */
+const DUPLICATE = '\u0000duplicate\u0000';
+
 /** Decodes a buffer, honouring a BOM and detecting UTF-16 without one. */
 const decode = (buffer) => {
   if (buffer.length >= 2) {
@@ -93,14 +96,33 @@ const setValues = (full, values = {}) => {
 
   Object.entries(values).forEach(([key, value]) => {
     const line = `${key}=${value}`;
-    const pattern = new RegExp(`^[ \\t]*(?:export[ \\t]+)?${key}[ \\t]*=.*$`, 'm');
-    if (pattern.test(text)) {
-      if (!new RegExp(`^${line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm').test(text)) {
-        text = text.replace(pattern, line);
-        changed.push(key);
-      }
-    } else {
+    const pattern = new RegExp(`^[ \\t]*(?:export[ \\t]+)?${key}[ \\t]*=.*$`, 'gm');
+    const matches = text.match(pattern);
+
+    if (!matches) {
       text += `${text.endsWith('\n') || text === '' ? '' : '\n'}${line}\n`;
+      changed.push(key);
+      return;
+    }
+
+    /*
+     * A key can legitimately appear twice — someone pastes a block, or a tool
+     * appends rather than edits. dotenv and Vite both let the LAST one win, so
+     * rewriting only the first leaves the stale value in charge and the change
+     * looks like it did nothing. Keep the first line, drop the rest.
+     */
+    let first = true;
+    let next = text.replace(pattern, () => {
+      if (first) {
+        first = false;
+        return line;
+      }
+      return DUPLICATE;
+    });
+    if (matches.length > 1) next = next.split(/\r\n|\n|\r/).filter((l) => l !== DUPLICATE).join('\n');
+
+    if (next !== text) {
+      text = next;
       changed.push(key);
     }
   });

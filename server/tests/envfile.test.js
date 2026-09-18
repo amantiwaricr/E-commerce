@@ -172,4 +172,29 @@ describe('setValues', () => {
     setValues(full, { FOO: 'bar' });
     expect(fs.readFileSync(full, 'utf8')).toBe('PORT=5000\nFOO=bar\n');
   });
+
+  /*
+   * dotenv and Vite both let the last assignment win, so a duplicate left
+   * further down the file keeps the old value in charge — the write appears to
+   * succeed and changes nothing anyone can see.
+   */
+  it('collapses a duplicate key rather than rewriting only the first', () => {
+    const full = write('s8.env', Buffer.from('SSL_KEY_PATH=./old.pem\nPORT=5000\nSSL_KEY_PATH=./stale.pem\n', 'utf8'));
+    expect(setValues(full, { SSL_KEY_PATH: './certs/dev-key.pem' })).toEqual(['SSL_KEY_PATH']);
+
+    const text = fs.readFileSync(full, 'utf8');
+    expect(text.match(/^SSL_KEY_PATH=/gm)).toHaveLength(1);
+    expect(readEnvFile(full).values).toEqual({ SSL_KEY_PATH: './certs/dev-key.pem', PORT: '5000' });
+  });
+
+  it('keeps the surviving line in the position of the first occurrence', () => {
+    const full = write('s9.env', Buffer.from('# top\nA=1\nPORT=1\nB=2\nPORT=2\nC=3\n', 'utf8'));
+    setValues(full, { PORT: '5001' });
+    expect(fs.readFileSync(full, 'utf8')).toBe('# top\nA=1\nPORT=5001\nB=2\nC=3\n');
+  });
+
+  it('reports no change when a duplicate-free key already holds the value', () => {
+    const full = write('s10.env', Buffer.from('PORT=5001\n', 'utf8'));
+    expect(setValues(full, { PORT: '5001' })).toEqual([]);
+  });
 });
