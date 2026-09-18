@@ -19,8 +19,10 @@
  * setup step — it is a dead end.
  */
 
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const net = require('net');
+const os = require('os');
 const path = require('path');
 
 const { readEnvFile, setValues } = require('./env-file');
@@ -29,7 +31,7 @@ const ROOT = path.resolve(__dirname, '..');
 const CERT_DIR = path.join(ROOT, 'server', 'certs');
 const KEY = path.join(CERT_DIR, 'dev-key.pem');
 const CERT = path.join(CERT_DIR, 'dev-cert.pem');
-const DAYS = 365;
+const CA = path.join(CERT_DIR, 'dev-ca.pem');
 
 const ENVS = {
   server: path.join(ROOT, 'server', '.env'),
@@ -79,62 +81,42 @@ const readOrigins = () => {
   };
 };
 
-const loadSelfsigned = () => {
+const loadIssuer = () => {
   try {
-    return require('selfsigned');
-  } catch {
-    console.error('\nThe `selfsigned` package is missing — it makes the certificate.');
-    console.error('  Run `npm install` in the project root, then try again.\n');
+    return require('./dev-certificate');
+  } catch (err) {
+    console.error('\nThe certificate library is missing or failed to load:');
+    console.error(`  ${err.message}`);
+    console.error('\n  Run `npm install` in the project root, then try again.\n');
     return process.exit(1);
   }
 };
 
 const generate = async () => {
-  if (fs.existsSync(KEY) && fs.existsSync(CERT)) {
+  if (fs.existsSync(KEY) && fs.existsSync(CERT) && fs.existsSync(CA)) {
     console.log('✓ certificate already present in server/certs');
     return;
   }
 
-  const selfsigned = loadSelfsigned();
+  const { issue, LEAF_DAYS } = loadIssuer();
   fs.mkdirSync(CERT_DIR, { recursive: true });
 
   let pems;
   try {
-    pems = await selfsigned.generate(
-      [
-        { name: 'commonName', value: 'localhost' },
-        { name: 'organizationName', value: 'Fresh Meat Nepal' },
-        { name: 'countryName', value: 'NP' },
-        { name: 'localityName', value: 'Lalitpur' },
-      ],
-      {
-        days: DAYS,
-        keySize: 2048,
-        algorithm: 'sha256',
-        // SANs matter: modern browsers ignore the legacy Common Name entirely.
-        extensions: [
-          {
-            name: 'subjectAltName',
-            altNames: [
-              { type: 2, value: 'localhost' },
-              { type: 7, ip: '127.0.0.1' },
-              { type: 7, ip: '::1' },
-            ],
-          },
-        ],
-      }
-    );
+    pems = await issue();
   } catch (err) {
     console.error('\nThe certificate could not be created:\n');
     console.error(`  ${err.message}\n`);
     return process.exit(1);
   }
 
-  // 0o600: the private key is readable by this account only. It never leaves
-  // the machine, but a key with default permissions is a habit worth not having.
-  fs.writeFileSync(KEY, pems.private, { mode: 0o600 });
+  // 0o600 on the key: it is only ever read by processes on this machine, but a
+  // private key with default permissions is a habit worth not having.
+  fs.writeFileSync(KEY, pems.key, { mode: 0o600 });
   fs.writeFileSync(CERT, pems.cert);
-  console.log(`✓ generated a self-signed certificate, valid ${DAYS} days`);
+  fs.writeFileSync(CA, pems.ca);
+  console.log(`✓ issued a certificate for localhost, valid ${LEAF_DAYS} days`);
+  console.log('  signed by a local development root — see `npm run ssl:trust`');
 };
 
 /** Cert paths are written relative to each app, so the repo stays movable. */
@@ -217,6 +199,7 @@ const warnAboutRunningServers = async (origins) => {
 const verifyWritten = () => {
   const problems = [];
   if (!fs.existsSync(KEY) || !fs.existsSync(CERT)) problems.push('the certificate is not in server/certs');
+  if (!fs.existsSync(CA)) problems.push('the development root (dev-ca.pem) is not in server/certs');
 
   Object.entries(ENVS).forEach(([app, file]) => {
     const values = valuesIn(file);
@@ -254,8 +237,10 @@ const turnOn = async (origins) => {
   console.log(`  API         ${origins.api('https')}/api/health`);
 
   const ports = [origins.site, origins.admin, origins.api].map((o) => portOf(o('https')));
-  console.log('\nYour browser will warn about the certificate the first time — that is expected');
-  console.log(`for a self-signed one. Accept it once per port (${ports.join(', ')}).`);
+  console.log(`\nThe browser will still say "Not secure" until you trust the root once:`);
+  console.log('\n      npm run ssl:trust\n');
+  console.log(`Without that step the traffic is encrypted but unvouched-for, and you have`);
+  console.log(`to click through a warning on each port (${ports.join(', ')}).`);
 
   await warnAboutRunningServers(origins);
 
@@ -267,6 +252,112 @@ const turnOff = (origins) => {
   report(apply('http', origins));
   console.log('\n✓ HTTPS off — all three apps are back on http. Restart `npm run dev`.');
   console.log('  The certificate is left in server/certs; delete it to start fresh.\n');
+};
+
+const CA_NAME = 'Fresh Meat Nepal Local Development CA';
+
+/**
+ * How to put the development root into the trust store, per platform.
+ *
+ * Chrome does not keep its own list on Windows or macOS — it asks the OS — so
+ * this is what turns "Not secure" into a padlock. On Linux, Chrome uses its own
+ * NSS database instead, which is why that one looks nothing like the others.
+ */
+const TRUST = {
+  win32: {
+    // -user: the current account's store. No administrator rights needed.
+    add: ['certutil', ['-user', '-addstore', 'Root', CA]],
+    remove: ['certutil', ['-user', '-delstore', 'Root', CA_NAME]],
+    list: ['certutil', ['-user', '-store', 'Root']],
+    where: 'Windows certificate store (Current User → Trusted Root)',
+  },
+  darwin: {
+    add: ['security', ['add-trusted-cert', '-r', 'trustRoot', '-k', path.join(os.homedir(), 'Library/Keychains/login.keychain-db'), CA]],
+    remove: ['security', ['delete-certificate', '-c', CA_NAME]],
+    list: ['security', ['find-certificate', '-c', CA_NAME]],
+    where: 'login keychain',
+  },
+  linux: {
+    // Chrome on Linux reads NSS, not /etc/ssl. The nssdb may not exist yet.
+    add: ['certutil', ['-d', `sql:${path.join(os.homedir(), '.pki/nssdb')}`, '-A', '-t', 'C,,', '-n', CA_NAME, '-i', CA]],
+    remove: ['certutil', ['-d', `sql:${path.join(os.homedir(), '.pki/nssdb')}`, '-D', '-n', CA_NAME]],
+    list: ['certutil', ['-d', `sql:${path.join(os.homedir(), '.pki/nssdb')}`, '-L']],
+    where: "Chrome's NSS database (~/.pki/nssdb)",
+  },
+};
+
+const quote = (arg) => (/[\s"]/.test(arg) ? `"${arg}"` : arg);
+const asCommand = ([exe, args]) => `${exe} ${args.map(quote).join(' ')}`;
+
+/** Best-effort: the store is readable, so just look for the name in it. */
+const isTrusted = (platform) => {
+  const plan = TRUST[platform];
+  if (!plan) return null;
+  try {
+    return execFileSync(plan.list[0], plan.list[1], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .includes(CA_NAME);
+  } catch {
+    return null; // The tool is missing, or the store does not exist yet.
+  }
+};
+
+const trust = (remove) => {
+  const plan = TRUST[process.platform];
+  if (!plan) {
+    console.error(`\nI do not know how to reach the trust store on ${process.platform}.`);
+    console.error(`Install ${CA} as a trusted root by hand.\n`);
+    return process.exit(1);
+  }
+
+  if (!remove && !fs.existsSync(CA)) {
+    console.error('\nThere is no root to trust yet. Run `npm run ssl:dev` first.\n');
+    return process.exit(1);
+  }
+
+  const [exe, args] = remove ? plan.remove : plan.add;
+
+  if (!remove) {
+    console.log(`This installs one certificate into your ${plan.where}:\n`);
+    console.log(`    ${CA_NAME}`);
+    console.log(`    ${CA}\n`);
+    console.log('  Afterwards your browser shows a padlock on localhost instead of');
+    console.log('  "Not secure", because the certificate the apps serve now chains to');
+    console.log('  a root your machine trusts.\n');
+    console.log('  It is safe to install because its private key does not exist. It was');
+    console.log('  created in memory, used once to sign the localhost certificate, and');
+    console.log('  discarded — so nobody, including you, can issue anything else with');
+    console.log('  it. That is the whole risk of trusting a root, and it is not here.\n');
+    console.log(`  To remove it later:  npm run ssl:untrust\n`);
+  }
+
+  console.log(`Running: ${asCommand([exe, args])}\n`);
+  try {
+    const out = execFileSync(exe, args, { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] });
+    if (out.trim()) console.log(out.trim());
+  } catch (err) {
+    console.error(`\n✗ That command failed:\n`);
+    console.error(`  ${String(err.stderr || err.message).trim()}\n`);
+    if (process.platform === 'linux') {
+      console.error('  On Linux this needs NSS tools: apt install libnss3-tools\n');
+    }
+    console.error('  You can also do it by hand — double-click the file above and');
+    console.error('  choose "Trusted Root Certification Authorities".\n');
+    return process.exit(1);
+  }
+
+  const trusted = isTrusted(process.platform);
+  if (remove) {
+    console.log(trusted === false ? '\n✓ removed from the trust store.\n' : '\n✓ done.\n');
+    return undefined;
+  }
+
+  console.log(trusted === false
+    ? '\n! the store does not show it yet — check the output above.\n'
+    : '\n✓ trusted.\n');
+  console.log('Now quit your browser COMPLETELY and reopen it — Chrome caches the');
+  console.log('trust decision per session, so a reload alone still shows the warning.');
+  console.log('Then open https://localhost:5173 and you should see a padlock.\n');
+  return undefined;
 };
 
 /*
@@ -289,7 +380,7 @@ const certificateReport = () => {
     return;
   }
 
-  const sizes = [['dev-key.pem', KEY], ['dev-cert.pem', CERT]];
+  const sizes = [['dev-key.pem', KEY], ['dev-cert.pem', CERT], ['dev-ca.pem', CA]];
   for (const [label, file] of sizes) {
     const bytes = fs.statSync(file).size;
     if (bytes === 0) {
@@ -305,9 +396,17 @@ const certificateReport = () => {
     const expired = new Date(x509.validTo) < new Date();
     console.log(`  ${expired ? '✗' : '✓'} valid ${x509.validFrom} → ${x509.validTo}${expired ? '  (EXPIRED — delete server/certs and re-run)' : ''}`);
     console.log(`  · names: ${x509.subjectAltName || '(none)'}`);
+    console.log(`  · issued by: ${x509.issuer.split('\n').find((l) => l.startsWith('CN=')) || '(unknown)'}`);
   } catch (err) {
     console.log(`  ✗ the certificate could not be parsed: ${err.message}`);
   }
+
+  // The difference between an encrypted connection and one the browser will
+  // put a padlock on. Everything else can be perfect and this still says no.
+  const trusted = isTrusted(process.platform);
+  if (trusted === true) console.log('  ✓ the development root is in this machine\'s trust store');
+  else if (trusted === false) console.log('  ✗ the development root is NOT trusted  → run `npm run ssl:trust`');
+  else console.log('  ? could not read the trust store  → `npm run ssl:trust` installs the root');
 };
 
 const appReport = (app, file) => {
@@ -399,6 +498,13 @@ const verdict = () => {
     const rest = apps.filter((a) => !a.configured).map((a) => a.app).join(' and ');
     console.log(`HTTPS is on for some apps but not ${rest}, so those stay on http.`);
     console.log('\n      npm run ssl:dev');
+  } else if (isTrusted(process.platform) === false) {
+    console.log('HTTPS is on and working — the connection IS encrypted. The browser');
+    console.log('says "Not secure" for a different reason: it does not trust who');
+    console.log('issued the certificate, because the development root is not in this');
+    console.log('machine\'s trust store yet.');
+    console.log('\n      npm run ssl:trust');
+    console.log('\n  Then quit the browser completely and reopen it.');
   } else {
     console.log('HTTPS is fully configured — all three apps and a certificate that');
     console.log('resolves. If the browser still shows http://, the config is not the');
@@ -415,10 +521,11 @@ const status = () => {
   console.log(`Node ${process.version} on ${process.platform}\n`);
 
   try {
-    require.resolve('selfsigned');
-    console.log('✓ selfsigned is installed\n');
-  } catch {
-    console.log('✗ selfsigned is NOT installed  → run `npm install` in the project root\n');
+    require('./dev-certificate');
+    console.log('✓ the certificate library is installed\n');
+  } catch (err) {
+    console.log(`✗ the certificate library will not load: ${err.message}`);
+    console.log('  → run `npm install` in the project root\n');
   }
 
   certificateReport();
@@ -433,6 +540,15 @@ const main = async () => {
   if (args.some((arg) => /^(--)?status$/.test(arg))) {
     console.log('\nFresh Meat Nepal — local HTTPS status\n');
     return status();
+  }
+
+  if (args.some((arg) => /^(--)?untrust$/.test(arg))) {
+    console.log('\nFresh Meat Nepal — removing the local development root\n');
+    return trust(true);
+  }
+  if (args.some((arg) => /^(--)?trust$/.test(arg))) {
+    console.log('\nFresh Meat Nepal — trusting the local development root\n');
+    return trust(false);
   }
 
   const missing = missingEnvs();

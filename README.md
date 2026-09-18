@@ -797,9 +797,11 @@ moved to HTTPS.
 **Local HTTPS — one command.**
 
 ```bash
-npm run ssl:dev          # generate a certificate and switch all three apps to https
-npm run ssl:status       # why is it still http? — checks every link in the chain
+npm run ssl:dev          # issue a certificate and switch all three apps to https
+npm run ssl:trust        # trust it, so the browser shows a padlock instead of a warning
+npm run ssl:status       # why is it still http / still not secure? — checks every link
 npm run ssl:dev -- off   # switch back
+npm run ssl:untrust      # remove the development root from the trust store
 ```
 
 It writes a self-signed certificate to `server/certs/` (gitignored) and sets the
@@ -813,12 +815,46 @@ in PowerShell, the Windows command prompt, Git Bash and a Unix shell. The API's 
 read from `PORT` in `server/.env` rather than assumed, so the URLs it writes match the
 port the server actually listens on.
 
-Your browser will warn about the certificate the first time, once per port (5173, 5174
-and whatever `PORT` is). That is what a self-signed certificate is: nothing vouches for
-it. Accepting it locally is the point — it lets you exercise `secure` cookies, the
-HTTP→HTTPS redirect and `SameSite=None` on your own machine instead of discovering them
-in production. Production certificates come from a CA, and Let's Encrypt is free and
-automatic.
+### "Not secure" on `https://localhost` — encryption is not trust
+
+A page can be served over TLS and still say **Not secure**, and the browser is right to
+say it. Two different questions are being answered:
+
+| | question | answered by |
+|---|---|---|
+| Encryption | can anyone read this traffic? | the TLS handshake |
+| Identity | is this host who it says it is? | who signed the certificate |
+
+A certificate that signed itself answers the second question with "because I said so",
+which is exactly what an attacker in the middle would also say. The browser cannot tell
+the two apart, so it refuses the padlock — `ERR_CERT_AUTHORITY_INVALID`.
+
+So `npm run ssl:dev` does not issue a self-signed certificate. It issues a two-link chain:
+
+```
+Fresh Meat Nepal Local Development CA      ← a root you install once
+  └── localhost                            ← what the three apps serve
+```
+
+`npm run ssl:trust` puts that root in the machine's trust store — the Windows store on
+Windows, the login keychain on macOS, Chrome's own NSS database on Linux. The chain then
+terminates in something the browser trusts, and the padlock is real: the same validation
+a public certificate passes, with you as the authority.
+
+**Trusting a root is normally a serious thing to do**, because a root's private key can
+mint a valid certificate for *any* hostname — someone holding it could impersonate your
+bank to your own browser. That risk is removed here rather than explained away: **the CA
+private key is never written to disk.** It is generated in memory, used once to sign the
+localhost certificate, and discarded. Nothing can ever be issued under this root again,
+including by you. Re-issuing means re-trusting, once a year.
+
+The leaf is valid 397 days (Chrome rejects server certificates over 398), covers
+`localhost`, `127.0.0.1` and `::1` as SANs, and carries `serverAuth` only — it cannot
+sign code or mail. After trusting it, **quit the browser completely** and reopen: Chrome
+caches the trust decision for the session, so a reload alone still shows the warning.
+
+None of this is production. Production certificates come from a public CA, and Let's
+Encrypt is free and automatic.
 
 HSTS is deliberately **not** sent in development. `Strict-Transport-Security` is set per
 host, not per port, so one from `localhost` would force every other local project on

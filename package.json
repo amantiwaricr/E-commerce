@@ -17,11 +17,14 @@
     "build": "npm run build --prefix client && npm run build --prefix admin",
     "start": "npm start --prefix server",
     "ssl:dev": "node scripts/ssl-dev.js",
-    "ssl:status": "node scripts/ssl-dev.js -- status"
+    "ssl:status": "node scripts/ssl-dev.js -- status",
+    "ssl:trust": "node scripts/ssl-dev.js -- trust",
+    "ssl:untrust": "node scripts/ssl-dev.js -- untrust"
   },
   "devDependencies": {
+    "@peculiar/x509": "^2.1.0",
     "npm-run-all": "^4.1.5",
-    "selfsigned": "^5.5.0"
+    "reflect-metadata": "^0.2.2"
   },
   "engines": {
     "node": ">=18.0.0"
