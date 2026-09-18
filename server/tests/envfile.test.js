@@ -3,7 +3,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { readEnvFile, looksUnreadable, normaliseEncoding, decode } = require('../../scripts/env-file');
+const { readEnvFile, looksUnreadable, normaliseEncoding, decode, setValues } = require('../../scripts/env-file');
 
 const BODY = 'PORT=5000\nMONGODB_URI=mongodb://127.0.0.1:27017/fmn\n# comment\n\nJWT_SECRET=abc\n';
 const EXPECTED = { PORT: '5000', MONGODB_URI: 'mongodb://127.0.0.1:27017/fmn', JWT_SECRET: 'abc' };
@@ -122,5 +122,54 @@ describe('normaliseEncoding', () => {
 describe('decode', () => {
   it('does not mistake a UTF-8 file containing accents for UTF-16', () => {
     expect(decode(Buffer.from('NAME=Café Bagmatī\n', 'utf8')).encoding).toBe('utf-8');
+  });
+});
+
+describe('setValues', () => {
+  it('rewrites a key in place, leaving comments and order alone', () => {
+    const full = write('s1.env', Buffer.from('# a comment\nPORT=5000\nFOO=bar\n', 'utf8'));
+    expect(setValues(full, { PORT: '6000' })).toEqual(['PORT']);
+    expect(fs.readFileSync(full, 'utf8')).toBe('# a comment\nPORT=6000\nFOO=bar\n');
+  });
+
+  it('appends a key that is not there yet', () => {
+    const full = write('s2.env', Buffer.from('PORT=5000\n', 'utf8'));
+    setValues(full, { BACKEND_URL: 'https://localhost:5000' });
+    expect(readEnvFile(full).values).toEqual({ PORT: '5000', BACKEND_URL: 'https://localhost:5000' });
+  });
+
+  it('reports only what it actually changed, so running twice is a no-op', () => {
+    const full = write('s3.env', Buffer.from('PORT=5000\n', 'utf8'));
+    expect(setValues(full, { PORT: '5000' })).toEqual([]);
+    expect(setValues(full, { PORT: '5001' })).toEqual(['PORT']);
+    expect(setValues(full, { PORT: '5001' })).toEqual([]);
+  });
+
+  it('can clear a value without removing the line', () => {
+    const full = write('s4.env', Buffer.from('SSL_KEY_PATH=./certs/k.pem\n', 'utf8'));
+    setValues(full, { SSL_KEY_PATH: '' });
+    expect(fs.readFileSync(full, 'utf8')).toBe('SSL_KEY_PATH=\n');
+  });
+
+  it('does not match a key that merely ends with the one being set', () => {
+    const full = write('s5.env', Buffer.from('VITE_API_URL=http://a\nAPI_URL=http://b\n', 'utf8'));
+    setValues(full, { API_URL: 'https://c' });
+    const { values } = readEnvFile(full);
+    expect(values.API_URL).toBe('https://c');
+    expect(values.VITE_API_URL).toBe('http://a');
+  });
+
+  it('repairs the encoding before writing, so a UTF-16 file is not appended to as UTF-8', () => {
+    const full = write('s6.env', utf16le('PORT=5000\n'));
+    setValues(full, { BACKEND_URL: 'https://localhost:5000' });
+    const after = readEnvFile(full);
+    expect(after.encoding).toBe('utf-8');
+    expect(after.values).toEqual({ PORT: '5000', BACKEND_URL: 'https://localhost:5000' });
+  });
+
+  it('adds a trailing newline when the file lacks one', () => {
+    const full = write('s7.env', Buffer.from('PORT=5000', 'utf8'));
+    setValues(full, { FOO: 'bar' });
+    expect(fs.readFileSync(full, 'utf8')).toBe('PORT=5000\nFOO=bar\n');
   });
 });

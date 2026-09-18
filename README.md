@@ -794,12 +794,26 @@ and reports the protocol it negotiated, whether the certificate is self-signed, 
 whether `VITE_API_URL` and `BACKEND_URL` still point at `http://` while the server has
 moved to HTTPS.
 
-**Local HTTPS.** `npm run ssl:dev --prefix server` writes a self-signed certificate to
-`server/certs/` (gitignored) and prints the settings to paste into `server/.env`. Use it to
-exercise the things that only happen over HTTPS — `COOKIE_SECURE=true`, the redirect,
-`SameSite=None` — rather than discovering them in production. Browsers will warn about the
-certificate, because nothing vouches for it; that is expected. Production certificates come
-from a CA, and Let's Encrypt is free and automatic.
+**Local HTTPS — one command.**
+
+```bash
+npm run ssl:dev          # generate a certificate and switch all three apps to https
+npm run ssl:dev -- off   # switch back
+```
+
+It writes a self-signed certificate to `server/certs/` (gitignored) and sets the
+certificate paths, URLs and `COOKIE_SECURE` across `server/.env`, `client/.env` and
+`admin/.env`. Restart `npm run dev` and the storefront, the admin panel and the API are
+all on `https://localhost` — the Vite dev servers included, which is what puts the
+padlock in the address bar rather than only encrypting the API calls.
+
+Your browser will warn about the certificate the first time, once per port (5173, 5174,
+5000). That is what a self-signed certificate is: nothing vouches for it. Accepting it
+locally is the point — it lets you exercise `secure` cookies, the HTTP→HTTPS redirect
+and `SameSite=None` on your own machine instead of discovering them in production.
+Production certificates come from a CA, and Let's Encrypt is free and automatic.
+
+`npm run doctor` reports what each of the three is actually serving.
 
 ---
 

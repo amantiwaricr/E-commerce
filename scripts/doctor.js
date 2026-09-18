@@ -228,8 +228,29 @@ const main = async () => {
     warn('cannot check TLS while the API is down');
   }
 
+  /*
+   * The API speaking TLS is only half of it: the address bar shows the site,
+   * not the API, so a storefront still on http:// is what a visitor notices.
+   */
+  for (const [label, envFile, port] of [['storefront', client, 5173], ['admin panel', admin, 5174]]) {
+    const configured = Boolean(envFile?.SSL_KEY_PATH && envFile?.SSL_CERT_PATH);
+    const live = await portOpen('127.0.0.1', port);
+    if (!live) {
+      if (configured) ok(`${label} is set up for HTTPS`, 'not running, so not checked');
+      continue;
+    }
+    const handshake = await tlsProbe('127.0.0.1', port);
+    if (handshake) ok(`${label} is serving HTTPS on port ${port}`, handshake.protocol);
+    else if (configured) {
+      bad(`${label} has certificates configured but is still on plain HTTP`,
+          'Restart `npm run dev` — Vite reads the certificate at startup.');
+    } else {
+      ok(`${label} is serving plain HTTP on port ${port}`, 'the default for development');
+    }
+  }
+
   if (!sslKey && !sslCert) {
-    console.log('      → To run the API over HTTPS locally: `npm run ssl:dev --prefix server`, then follow what it prints.');
+    console.log('      → To put the whole site on HTTPS locally: `npm run ssl:dev`, then restart `npm run dev`.');
   }
   if (forceHttps === 'true') {
     ok('FORCE_HTTPS=true — plain HTTP will be redirected and HSTS sent');

@@ -80,4 +80,33 @@ const normaliseEncoding = (full) => {
   return encoding;
 };
 
-module.exports = { readEnvFile, looksUnreadable, normaliseEncoding, decode };
+/**
+ * Sets keys in a KEY=value file, preserving comments, order and anything not
+ * named. A key that is absent is appended; one that is present is rewritten in
+ * place. The file is normalised to UTF-8 first, since a UTF-16 one would
+ * otherwise be appended to in the wrong encoding.
+ */
+const setValues = (full, values = {}) => {
+  normaliseEncoding(full);
+  let text = fs.readFileSync(full, 'utf8');
+  const changed = [];
+
+  Object.entries(values).forEach(([key, value]) => {
+    const line = `${key}=${value}`;
+    const pattern = new RegExp(`^[ \\t]*(?:export[ \\t]+)?${key}[ \\t]*=.*$`, 'm');
+    if (pattern.test(text)) {
+      if (!new RegExp(`^${line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm').test(text)) {
+        text = text.replace(pattern, line);
+        changed.push(key);
+      }
+    } else {
+      text += `${text.endsWith('\n') || text === '' ? '' : '\n'}${line}\n`;
+      changed.push(key);
+    }
+  });
+
+  if (changed.length) fs.writeFileSync(full, text, 'utf8');
+  return changed;
+};
+
+module.exports = { readEnvFile, looksUnreadable, normaliseEncoding, decode, setValues };
