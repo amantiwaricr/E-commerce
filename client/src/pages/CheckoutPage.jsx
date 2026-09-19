@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import EmptyState from '../components/EmptyState';
-import Loader from '../components/Loader';
+import PaymentPicker from '../components/PaymentPicker';
+import { ShieldIcon } from '../components/icons';
 import { formatNpr } from '../utils/format';
 import { submitEsewaForm } from '../utils/esewa';
 import useSeo from '../hooks/useSeo';
@@ -32,6 +33,7 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState(BLANK_ADDRESS);
   const [paymentMethod, setPaymentMethod] = useState('esewa');
   const [methods, setMethods] = useState([]);
+  const [methodsLoading, setMethodsLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -76,8 +78,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     api
       .get('/payments/methods')
-      .then(({ data }) => setMethods(data.methods))
-      .catch(() => setMethods([]));
+      .then(({ data }) => {
+        const list = Array.isArray(data.methods) ? data.methods : [];
+        setMethods(list);
+        // The default is only a default while it is actually offered — a store
+        // with eSewa switched off must not submit `esewa` because nothing ever
+        // moved the selection off it.
+        if (!list.some((m) => m.id === 'esewa' && m.enabled)) {
+          const first = list.find((m) => m.enabled);
+          if (first) setPaymentMethod(first.id);
+        }
+      })
+      .catch(() => setMethods([]))
+      .finally(() => setMethodsLoading(false));
   }, []);
 
   const setField = (field) => (event) => {
@@ -226,76 +239,64 @@ export default function CheckoutPage() {
             </div>
           </section>
 
-          <section className="panel">
-            <h3>Payment method</h3>
-
-            {methods.length === 0 ? (
-              <Loader label="Loading payment options…" />
-            ) : (
-              methods.map((method) => (
-                <label
-                  key={method.id}
-                  className={`pay-option ${paymentMethod === method.id ? 'selected' : ''} ${
-                    method.enabled ? '' : 'disabled'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={method.id}
-                    checked={paymentMethod === method.id}
-                    disabled={!method.enabled}
-                    onChange={() => setPaymentMethod(method.id)}
-                  />
-                  <span>
-                    <strong>{method.label}</strong>
-                    <br />
-                    <span className="small muted">
-                      {method.enabled ? method.description : 'Not enabled for this store yet'}
-                    </span>
-                  </span>
-                </label>
-              ))
-            )}
-          </section>
         </div>
 
-        <aside className="panel">
-          <h3>Order summary</h3>
+        {/* Summary, then payment, then the button. Deciding how to pay is the
+            last thing you do before paying, so it belongs next to the amount —
+            not above the address form, two scrolls away from the total it
+            applies to. */}
+        <aside className="checkout-side">
+          <section className="panel summary-card">
+            <h3>Order summary</h3>
 
-          {cart.items.map((item) => (
-            <div className="summary-line" key={item.productId || item.product}>
-              <span>
-                {item.name} <span className="muted">× {item.quantity}</span>
-              </span>
-              <span>{formatNpr(item.subtotal)}</span>
+            <div className="summary-items">
+              {cart.items.map((item) => (
+                <div className="summary-line" key={item.productId || item.product}>
+                  <span className="truncate">
+                    {item.name} <span className="muted">× {item.quantity}</span>
+                  </span>
+                  <span>{formatNpr(item.subtotal)}</span>
+                </div>
+              ))}
             </div>
-          ))}
 
-          <div className="summary-line" style={{ borderTop: '1px solid var(--line)', marginTop: 8, paddingTop: 12 }}>
-            <span>Items total</span>
-            <span>{formatNpr(cart.itemsTotal)}</span>
-          </div>
-          <div className="summary-line">
-            <span>{deliveryMethod === 'pickup' ? 'Pick up in store' : 'Delivery'}</span>
-            <span>{cart.deliveryCharge ? formatNpr(cart.deliveryCharge) : 'Free'}</span>
-          </div>
-          <div className="summary-line total">
-            <span>Total payable</span>
-            <span>{formatNpr(cart.totalAmount)}</span>
-          </div>
+            <div className="summary-line" style={{ borderTop: '1px solid var(--line)', marginTop: 8, paddingTop: 12 }}>
+              <span>Items total</span>
+              <span>{formatNpr(cart.itemsTotal)}</span>
+            </div>
+            <div className="summary-line">
+              <span>{deliveryMethod === 'pickup' ? 'Pick up in store' : 'Delivery'}</span>
+              <span>{cart.deliveryCharge ? formatNpr(cart.deliveryCharge) : 'Free'}</span>
+            </div>
 
-          <button type="submit" className="btn block" style={{ marginTop: 16 }} disabled={submitting}>
-            {submitting
-              ? 'Placing your order…'
-              : paymentMethod === 'cod'
-                ? 'Place order'
-                : `Pay ${formatNpr(cart.totalAmount)}`}
-          </button>
+            <div className="summary-total">
+              <span>Total payable</span>
+              <strong>{formatNpr(cart.totalAmount)}</strong>
+            </div>
 
-          <p className="small muted" style={{ marginTop: 12, marginBottom: 0 }}>
-            You will receive an order confirmation by email and WhatsApp with a tracking link.
-          </p>
+            <div className="summary-split">
+              <h4>Payment method</h4>
+              <PaymentPicker
+                methods={methods}
+                value={paymentMethod}
+                onChange={setPaymentMethod}
+                loading={methodsLoading}
+              />
+            </div>
+
+            <button type="submit" className="btn block pay-btn" disabled={submitting || !methods.length}>
+              {submitting
+                ? 'Placing your order…'
+                : paymentMethod === 'cod'
+                  ? `Place order · ${formatNpr(cart.totalAmount)}`
+                  : `Pay ${formatNpr(cart.totalAmount)}`}
+            </button>
+
+            <p className="pay-assure">
+              <ShieldIcon width={14} height={14} />
+              <span>Encrypted over TLS. A confirmation with a tracking link is emailed to you.</span>
+            </p>
+          </section>
         </aside>
       </form>
     </div>
