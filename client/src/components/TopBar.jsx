@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Logo from './Logo';
 import { CartIcon, HeartIcon, SearchIcon, WhatsAppIcon } from './icons';
@@ -30,6 +30,44 @@ export default function TopBar() {
   // Keep the box in step when the term changes elsewhere (chips, reset, back).
   useEffect(() => setTerm(searchParams.get('search') || ''), [searchParams]);
 
+  /*
+   * Publishes the header's height and the page gutter, so anything else that
+   * sticks can sit directly beneath it and span the same width.
+   *
+   * Both are measured rather than written down. The header wraps onto two rows
+   * below 860px and grows from 71px to 161px, so a constant offset would be
+   * right on a laptop and leave a ninety-pixel gap on a phone.
+   *
+   * The gutter needs measuring for a subtler reason: `--gutter` is
+   * `max(18px, (100% - 1240px) / 2)`, and a percentage in a custom property
+   * resolves against whoever *uses* it. Inside the content column that is a
+   * narrower box than the full width the header sees, so a sticky bar trying
+   * to cancel the gutter with a negative margin fell 162px short of the window
+   * edge on a wide screen. This header spans the full width, so its own
+   * padding is the real figure.
+   */
+  const headerRef = useRef(null);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return undefined;
+
+    const publish = () => {
+      const root = document.documentElement.style;
+      root.setProperty('--topbar-h', `${Math.round(header.getBoundingClientRect().height)}px`);
+      root.setProperty('--gutter-px', getComputedStyle(header).paddingLeft);
+    };
+
+    publish();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', publish);
+      return () => window.removeEventListener('resize', publish);
+    }
+
+    const observer = new ResizeObserver(publish);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
   const submit = (event) => {
     event.preventDefault();
     const next = new URLSearchParams(searchParams);
@@ -40,7 +78,7 @@ export default function TopBar() {
   };
 
   return (
-    <header className="topbar">
+    <header className="topbar" ref={headerRef}>
       <Link to="/" aria-label="Fresh Meat Nepal — home">
         <Logo />
       </Link>

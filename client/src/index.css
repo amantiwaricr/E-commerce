@@ -207,7 +207,18 @@ ul { margin: 0; padding: 0; list-style: none; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ══ App shell ═══════════════════════════════════════════════ */
-.viewport { min-height: 100vh; position: relative; overflow-x: hidden; }
+/*
+ * `clip`, not `hidden`. They look identical — both stop sideways scrolling from
+ * the landing page's full-bleed bands — but `overflow-x: hidden` forces
+ * `overflow-y` to compute to `auto`, which makes this element a scroll
+ * container. Every `position: sticky` inside then anchors to *it* rather than
+ * to the window, and since this box grows with its content and never scrolls,
+ * nothing sticks. The header carried `position: sticky; top: 0` for months and
+ * scrolled away regardless.
+ *
+ * `overflow: clip` does not create a scroll container, so sticky keeps working.
+ */
+.viewport { min-height: 100vh; position: relative; overflow-x: clip; }
 
 .shell {
   position: relative;
@@ -418,7 +429,34 @@ a.ub-item:hover { color: #fff; }
 }
 
 /* ══ Category chips ══════════════════════════════════════════ */
-.chips { display: flex; gap: 8px; padding: 16px 2px 14px; overflow-x: auto; scrollbar-width: none; }
+/*
+ * The category rail stays put while the catalogue scrolls under it, so the
+ * filter you are browsing within is always on screen.
+ *
+ * --topbar-h is published by TopBar as it resizes; the fallback only matters
+ * for the frame before the first measurement. The negative margins pull the
+ * background out to the window edges — a bar that stops at the gutter looks
+ * like a floating strip once content slides beneath it.
+ */
+.chips {
+  display: flex;
+  gap: 8px;
+  /* --gutter-px is the header's measured padding, not `--gutter` — see TopBar.
+     The fallback covers the frame before the first measurement. */
+  padding: 16px var(--gutter-px, 18px) 14px;
+  margin: 0 calc(var(--gutter-px, 18px) * -1);
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: var(--topbar-h, 71px);
+  /* Below the header (40) so it slides under, above the cards. */
+  z-index: 30;
+  background: var(--night);
+  /* Always drawn, not toggled on scroll: detecting "stuck" needs a sentinel and
+     an observer, and the hairline reads correctly at rest too — it closes the
+     header's toolbar area rather than floating. */
+  border-bottom: 1px solid var(--line);
+}
 .chips::-webkit-scrollbar { display: none; }
 
 .chip {
