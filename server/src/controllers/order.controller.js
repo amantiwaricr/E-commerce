@@ -350,7 +350,12 @@ const verifyOrderIntegrity = asyncHandler(async (req, res) => {
     orderNumber: order.orderNumber,
     integrity: {
       valid: report.valid,
+      // Separate from `valid` so the page can tell "nothing was altered but
+      // this store never turned signing on" apart from "this was tampered
+      // with". They are not the same news.
+      intact: report.intact,
       signed: report.signed,
+      signingConfigured: report.signingConfigured,
       entries: report.entries,
       receipt: report.tipHash,
       algorithm: `${integrityService.HASH_ALGORITHM} + ${integrityService.SIGNATURE_ALGORITHM}`,
@@ -358,6 +363,7 @@ const verifyOrderIntegrity = asyncHandler(async (req, res) => {
          attacker who already holds the database would like to know, so it goes
          to staff only; the customer is told whether their receipt stands. */
       problems: isAdmin ? report.problems : undefined,
+      warnings: isAdmin ? report.warnings : undefined,
       ledger: isAdmin ? order.ledger : undefined,
     },
   });

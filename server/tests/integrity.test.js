@@ -206,13 +206,33 @@ describe('the signed, chained ledger', () => {
     expect(svc.verifyLedger(order).valid).toBe(false);
   });
 
-  it('catches a stripped signature', () => {
+  /*
+   * A stripped signature cannot be told apart from an entry written before a
+   * key existed, so it is never treated as verified — but it is reported as
+   * something that could not be confirmed, not as a detected alteration.
+   */
+  it('never counts a stripped signature as verified', () => {
     const order = placedOrder();
     order.ledger[0].signature = '';
 
     const report = svc.verifyLedger(order);
     expect(report.valid).toBe(false);
-    expect(report.problems.join(' ')).toMatch(/is not signed/);
+    expect(report.signed).toBe(false);
+    // The data itself is untouched, and the report says so rather than crying
+    // tampering.
+    expect(report.intact).toBe(true);
+    expect(report.problems).toEqual([]);
+    expect(report.warnings.join(' ')).toMatch(/no signature/);
+  });
+
+  it('separates an altered entry from an unsigned one', () => {
+    const altered = placedOrder();
+    altered.ledger[0].data.totalAmount = 1;
+    expect(svc.verifyLedger(altered).intact).toBe(false);
+
+    const unsigned = placedOrder();
+    unsigned.ledger[0].signature = '';
+    expect(svc.verifyLedger(unsigned).intact).toBe(true);
   });
 
   it('catches a signature taken from another order', () => {
@@ -290,7 +310,13 @@ describe('key handling', () => {
     const report = svc.verifyLedger(order);
     expect(report.signed).toBe(false);
     expect(report.valid).toBe(false);
-    expect(report.problems.join(' ')).toMatch(/is not signed/);
+    // Nothing is wrong with the data — the store simply never generated a key.
+    // Reporting this as a failure told a customer their paid order looked
+    // forged because of a setup step nobody had taken.
+    expect(report.intact).toBe(true);
+    expect(report.signingConfigured).toBe(false);
+    expect(report.problems).toEqual([]);
+    expect(report.warnings.join(' ')).toMatch(/no signing key configured/);
   });
 
   it('verifies entries signed by a retired key after a rotation', () => {
@@ -326,7 +352,11 @@ describe('key handling', () => {
 
     const report = newSvc.verifyLedger(order);
     expect(report.valid).toBe(false);
-    expect(report.problems.join(' ')).toMatch(/unknown key "key-2025"/);
+    // The entry is intact and signed by *someone*; this server just cannot
+    // check it any more. That is a gap in the keyring, not evidence of fraud.
+    expect(report.intact).toBe(true);
+    expect(report.problems).toEqual([]);
+    expect(report.warnings.join(' ')).toMatch(/unknown key "key-2025"/);
   });
 
   it('refuses a private key of the wrong type rather than signing with it', () => {
@@ -368,5 +398,59 @@ describe('what an entry commits to', () => {
     const moved = ORDER();
     moved.shippingAddress.street = 'Somewhere else';
     expect(placementFacts(moved).shippingAddressHash).not.toBe(a.shippingAddressHash);
+  });
+});
+
+describe('the verdict the order page renders', () => {
+  /* Mirrors stateOf() in client/src/components/IntegrityBadge.jsx. Four
+     outcomes, because collapsing them into "verified or not" is what turned a
+     missing setup step into "contact support". */
+  const stateOf = ({ valid, intact, signingConfigured }) => {
+    if (valid) return 'verified';
+    if (!intact) return 'broken';
+    return signingConfigured ? 'partial' : 'unsigned';
+  };
+
+  const ledgerFor = (svc) => {
+    const order = { ...ORDER(), ledger: [] };
+    svc.appendEntry(order, { type: 'order.placed', data: svc.placementFacts(order) });
+    return order;
+  };
+
+  afterEach(() => {
+    delete process.env.TXN_SIGNING_KEY;
+    delete process.env.TXN_SIGNING_KEY_ID;
+    jest.resetModules();
+  });
+
+  it('says verified for a signed, untouched ledger', () => {
+    installKey();
+    const svc = freshIntegrity();
+    expect(stateOf(svc.verifyLedger(ledgerFor(svc)))).toBe('verified');
+  });
+
+  it('says unsigned — not broken — when the store has no signing key', () => {
+    delete process.env.TXN_SIGNING_KEY;
+    delete process.env.TXN_SIGNING_KEY_ID;
+    jest.resetModules();
+    const svc = require('../src/services/integrity.service');
+    expect(stateOf(svc.verifyLedger(ledgerFor(svc)))).toBe('unsigned');
+  });
+
+  it('says partial when a key exists but an entry predates it', () => {
+    installKey();
+    const svc = freshIntegrity();
+    const order = ledgerFor(svc);
+    order.ledger[0].signature = '';
+    order.ledger[0].alg = 'none';
+    expect(stateOf(svc.verifyLedger(order))).toBe('partial');
+  });
+
+  it('says broken only when something was actually altered', () => {
+    installKey();
+    const svc = freshIntegrity();
+    const order = ledgerFor(svc);
+    order.ledger[0].data.totalAmount = 1;
+    expect(stateOf(svc.verifyLedger(order))).toBe('broken');
   });
 });

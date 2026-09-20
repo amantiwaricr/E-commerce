@@ -36,6 +36,32 @@ const generate = () => {
 /** `2026-09-20` — a key id that says when it started being used. */
 const newKeyId = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Creates a signing key in `envFile` if there is not one already.
+ *
+ * Exported so `npm run setup` can do this without anyone having to know the
+ * command exists. Never replaces an existing key — that is what rotation is
+ * for, and doing it silently would orphan every signature already written.
+ *
+ * @returns `{ created, keyId }`
+ */
+const ensureSigningKey = (envFile = ENV) => {
+  if (!fs.existsSync(envFile)) return { created: false, keyId: '' };
+
+  const current = (readEnvFile(envFile) || { values: {} }).values;
+  if (current.TXN_SIGNING_KEY) return { created: false, keyId: current.TXN_SIGNING_KEY_ID || 'default' };
+
+  const { privatePem } = generate();
+  const keyId = newKeyId();
+  setValues(envFile, {
+    TXN_SIGNING_KEY_ID: keyId,
+    TXN_SIGNING_KEY: pack(privatePem),
+    TXN_VERIFY_KEYS: current.TXN_VERIFY_KEYS || '{}',
+  });
+
+  return { created: true, keyId };
+};
+
 const main = () => {
   const rotating = process.argv.slice(2).some((arg) => /^(--)?rotate$/.test(arg));
 
@@ -102,4 +128,6 @@ const main = () => {
   return undefined;
 };
 
-main();
+if (require.main === module) main();
+
+module.exports = { ensureSigningKey };

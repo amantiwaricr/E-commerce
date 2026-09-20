@@ -836,11 +836,32 @@ npm run keys:txn             # generate the Ed25519 signing key
 npm run keys:txn -- rotate   # replace it, keeping old signatures verifiable
 ```
 
+`npm run setup` generates the key too, so a fresh checkout records signed orders without
+anyone having to know this command exists.
+
 Rotation keeps every retired **public** key in `TXN_VERIFY_KEYS`, and each entry records
 the `keyId` it was signed under, so a routine key change does not invalidate last year's
 receipts. With no key configured the ledger still hashes and chains — tamper-evident
 against the database — but reports itself as unsigned; production refuses to boot without
 one.
+
+**Unsigned is not the same as altered**, and the report keeps them apart:
+
+| | means |
+|---|---|
+| `intact` | every hash recomputes and every chain link holds — nothing was changed |
+| `signed` | every entry carries a signature that verifies — it came from this server |
+| `valid` | both |
+
+An order recorded before the store generated a key is `intact` but not `signed`. Telling
+a customer that reads as "your paid order may be forged", which is a false alarm that
+teaches people to ignore the real one — so the order page renders four outcomes, not two:
+verified, intact-but-unsigned, intact-but-partially-signed, and does-not-verify. Only the
+last one says to contact support.
+
+A stripped signature cannot be told apart from an entry written before the key existed, so
+neither is ever counted as verified — but neither is reported as a detected alteration
+either.
 
 **Why a signature rather than an HMAC**, when the eSewa integration already uses one: a
 shared secret cannot answer "did this server issue this record?" to anyone except the

@@ -15,7 +15,8 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { normaliseEncoding } = require('./env-file');
+const { normaliseEncoding, readEnvFile, setValues } = require('./env-file');
+const { ensureSigningKey } = require('./keys-txn');
 
 const ROOT = path.resolve(__dirname, '..');
 const SERVER_ENV = path.join(ROOT, 'server', '.env');
@@ -172,7 +173,16 @@ const main = async () => {
   fs.writeFileSync(CLIENT_ENV, client);
   fs.writeFileSync(ADMIN_ENV, admin);
 
+  /*
+   * The transaction ledger's signing key, generated here rather than left as a
+   * command to discover. Without it every order is recorded unsigned, which is
+   * a state the order page then has to explain — and the first person to meet
+   * that explanation had just paid for meat.
+   */
+  const key = ensureSigningKey(SERVER_ENV);
+
   console.log('\n✓ server/.env, client/.env and admin/.env updated');
+  if (key.created) console.log(`  · generated the transaction signing key (id ${key.keyId})`);
   if (adminEmail) console.log(`  · ${adminEmail} will be the store admin after seeding`);
   if (adminPassword) console.log('  · admin password set (used by `npm run seed`)');
   if (port) console.log(`  · API port set to ${port}`);

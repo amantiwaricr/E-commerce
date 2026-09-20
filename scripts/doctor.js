@@ -187,6 +187,14 @@ const main = async () => {
     ok('admin account credentials are set', server.SEED_ADMIN_EMAIL || '');
   }
 
+  // Unsigned money records look fine until someone needs to prove one.
+  if (!server.TXN_SIGNING_KEY) {
+    warn('transaction signing key is not set, so orders are recorded unsigned',
+         'Run `npm run keys:txn`, restart the API, and new orders will be signed.');
+  } else {
+    ok('transaction ledger is signed', `Ed25519, key ${server.TXN_SIGNING_KEY_ID || 'default'}`);
+  }
+
   console.log('\nServices');
   const port = Number(server.PORT || 5000);
   const apiUp = await portOpen('127.0.0.1', port);

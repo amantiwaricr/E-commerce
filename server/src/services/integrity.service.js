@@ -240,38 +240,69 @@ const appendEntry = (order, { type, data, at = new Date() }) => {
 /**
  * Re-derives every digest, checks every link, and verifies every signature.
  *
- * Reports each failure rather than stopping at the first: "entry 2's amount was
- * edited and entry 3 was deleted" is a different incident from either alone,
- * and an auditor needs the whole picture.
+ * Two different verdicts come out of this, and collapsing them into one
+ * boolean was a mistake worth not repeating: an order recorded before the
+ * store generated a signing key is *unsigned*, which is not the same thing as
+ * *altered*. Reporting the first as the second tells a customer their paid
+ * order looks forged because of a configuration step nobody took.
+ *
+ *   intact  every hash recomputes and every link holds — nothing was changed.
+ *   signed  every entry carries a signature that verifies — it came from here.
+ *
+ * `problems` are definite failures. `warnings` are things that cannot be
+ * confirmed, which is a weaker statement and reads differently.
+ *
+ * Each is reported in full rather than stopping at the first: "entry 2's
+ * amount was edited and entry 3 was deleted" is a different incident from
+ * either alone, and an auditor needs the whole picture.
  */
 const verifyLedger = (order) => {
   const ledger = (order?.ledger || []).map((entry) => (typeof entry.toObject === 'function' ? entry.toObject() : entry));
-  const { publicKeys } = loadKeyring();
+  const { publicKeys, canSign } = loadKeyring();
   const problems = [];
+  const warnings = [];
 
   if (!ledger.length) {
-    return { valid: false, signed: false, entries: 0, tipHash: '', problems: ['This order has no ledger entries.'] };
+    return {
+      valid: false,
+      intact: false,
+      signed: false,
+      signingConfigured: canSign,
+      entries: 0,
+      tipHash: '',
+      problems: ['This order has no ledger entries.'],
+      warnings: [],
+    };
   }
 
   let signedCount = 0;
+  let brokenCount = 0;
 
   ledger.forEach((entry, index) => {
     const where = `entry ${index} (${entry.type || 'unknown'})`;
 
-    if (entry.seq !== index) problems.push(`${where}: sequence number is ${entry.seq}, expected ${index}.`);
+    if (entry.seq !== index) {
+      brokenCount += 1;
+      problems.push(`${where}: sequence number is ${entry.seq}, expected ${index}.`);
+    }
 
     let recomputed;
     try {
       recomputed = digestOf(entryBody(entry));
     } catch (err) {
+      brokenCount += 1;
       problems.push(`${where}: contents cannot be hashed — ${err.message}`);
       return;
     }
 
-    if (recomputed !== entry.hash) problems.push(`${where}: contents do not match its hash — it was altered.`);
+    if (recomputed !== entry.hash) {
+      brokenCount += 1;
+      problems.push(`${where}: contents do not match its hash — it was altered.`);
+    }
 
     const expectedPrev = index === 0 ? '' : ledger[index - 1].hash;
     if (entry.prevHash !== expectedPrev) {
+      brokenCount += 1;
       problems.push(
         index === 0
           ? `${where}: claims a predecessor, but it is the first entry.`
@@ -280,13 +311,20 @@ const verifyLedger = (order) => {
     }
 
     if (!entry.signature) {
-      problems.push(`${where}: is not signed, so its origin cannot be established.`);
+      // A warning, not a failure. It cannot be told apart from a signature
+      // someone stripped — so it is never treated as verified — but by far its
+      // commonest cause is an order recorded before a signing key existed.
+      warnings.push(
+        canSign
+          ? `${where}: carries no signature, so its origin cannot be confirmed. Entries recorded before the signing key was generated look like this.`
+          : `${where}: is unsigned because this server has no signing key configured (run \`npm run keys:txn\`).`
+      );
       return;
     }
 
     const key = publicKeys[entry.keyId];
     if (!key) {
-      problems.push(`${where}: signed with unknown key "${entry.keyId}" — add its public half to TXN_VERIFY_KEYS.`);
+      warnings.push(`${where}: signed with unknown key "${entry.keyId}" — add its public half to TXN_VERIFY_KEYS to check it.`);
       return;
     }
 
@@ -301,16 +339,27 @@ const verifyLedger = (order) => {
       return;
     }
 
-    if (ok) signedCount += 1;
-    else problems.push(`${where}: signature does not verify — this entry did not come from this server.`);
+    if (ok) {
+      signedCount += 1;
+    } else {
+      brokenCount += 1;
+      problems.push(`${where}: signature does not verify — this entry did not come from this server.`);
+    }
   });
 
+  const intact = brokenCount === 0;
+  const signed = signedCount === ledger.length;
+
   return {
-    valid: problems.length === 0,
-    signed: signedCount === ledger.length,
+    // The strict verdict: unaltered AND provably ours.
+    valid: intact && signed,
+    intact,
+    signed,
+    signingConfigured: canSign,
     entries: ledger.length,
     tipHash: ledger[ledger.length - 1]?.hash || '',
     problems,
+    warnings,
   };
 };
 
