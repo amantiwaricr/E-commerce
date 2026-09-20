@@ -477,6 +477,34 @@ a.ub-item:hover { color: #fff; }
 /* ══ Browse layout ═══════════════════════════════════════════ */
 .browse { display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr); gap: 18px; align-items: start; }
 
+/*
+ * The filter sidebar stays put while the results scroll, so you can narrow a
+ * search without scrolling back up to reach the controls.
+ *
+ * Only from 861px, because below that the sidebar is a panel the Filters
+ * button opens and closes — pinning a drawer to the top of the screen is not
+ * the same feature.
+ */
+@media (min-width: 861px) {
+  .filters {
+    position: sticky;
+    /* Below the header and the category rail, both of which are also pinned. */
+    top: calc(var(--topbar-h, 71px) + var(--chips-h, 66px) + 10px);
+    /* A sidebar taller than the screen would pin its top and put its bottom
+       permanently out of reach, so it scrolls within itself instead. */
+    max-height: calc(100vh - var(--topbar-h, 71px) - var(--chips-h, 66px) - 24px);
+    overflow-y: auto;
+    /* Room for the scrollbar so it never sits on top of a checkbox. */
+    padding-right: 4px;
+    margin-right: -4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--night-4) transparent;
+  }
+  .filters::-webkit-scrollbar { width: 8px; }
+  .filters::-webkit-scrollbar-thumb { background: var(--night-4); border-radius: 999px; }
+  .filters::-webkit-scrollbar-track { background: transparent; }
+}
+
 .filter-card {
   background: var(--night-2);
   border: 1px solid var(--line);
