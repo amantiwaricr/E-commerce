@@ -49,6 +49,11 @@
 
   --amber: #a86400;
   --on-amber: #ffffff;
+  /* Darker than --amber, for amber *text*. --amber is tuned as a fill and
+     measures 4.42:1 on a card and 3.76:1 on its own badge tint — both short of
+     AA. This clears it on both (6.0 and 5.1). --amber stays for icons and
+     fills, which only need 3:1. */
+  --warn-ink: #8a5200;
   --star: #e0a100;
   --red: #c62026;
   --danger-ink: #a3161c;
@@ -111,6 +116,7 @@
 
   --amber: #ffc94a;
   --on-amber: #4a3600;
+  --warn-ink: #ffc94a;
   --star: #ffb800;
   --red: #ff5a5c;
   --danger-ink: #ff9092;
@@ -621,64 +627,105 @@ a.ub-item:hover { color: #fff; }
   background: var(--night-2);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  padding: 0 14px 14px;
-  overflow: hidden;
+  /* Even padding all round: the photograph is inset with its own radius rather
+     than bleeding to the card's edge, which is what makes a card read as a
+     card rather than as a picture with text stuck underneath. */
+  padding: 10px 10px 14px;
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
-  transition: border-color .16s ease, transform .16s ease;
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.pcard:hover { border-color: var(--violet-line); transform: translateY(-2px); }
+.pcard:hover { border-color: var(--violet-line); transform: translateY(-3px); box-shadow: var(--shadow-pop); }
+/* Keyboard users get the same affordance as a pointer. */
+.pcard:focus-within { border-color: var(--violet-line); }
+
+.pcard-media { position: relative; }
 
 .pcard-tile {
   position: relative;
-  margin: 0 -14px;
-  background: var(--night-3);
-  aspect-ratio: 1 / .78;
-  overflow: hidden;
   display: block;
+  background: var(--night-3);
+  aspect-ratio: 1 / .82;
+  border-radius: 14px;
+  overflow: hidden;
 }
-.pcard-tile img { width: 100%; height: 100%; object-fit: cover; }
+.pcard-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .4s cubic-bezier(.2, .7, .3, 1);
+}
+.pcard:hover .pcard-tile img { transform: scale(1.05); }
 .pcard-tile .noimg { height: 100%; display: grid; place-items: center; color: var(--ink-3); font-size: .78rem; }
 
+/* A sold-out product stays legible and stays shoppable later — dimmed, not
+   hidden, so the price and the favourite button still work. */
+.pcard.sold-out .pcard-tile img { filter: grayscale(.85); opacity: .65; }
+
 .heart {
-  position: absolute; top: 12px; right: 12px;
+  position: absolute; top: 10px; right: 10px;
   width: 34px; height: 34px; border-radius: 50%;
   border: 0;
-  background: var(--night);
+  background: var(--glass);
+  backdrop-filter: blur(6px);
   box-shadow: var(--shadow-float);
   display: grid; place-items: center; cursor: pointer;
   color: var(--ink-2);
-  transition: transform .12s ease, color .12s ease;
+  transition: transform .14s ease, color .14s ease, background .14s ease;
   z-index: 2;
 }
-.heart:hover { transform: scale(1.08); color: var(--ink); }
-.heart.on { color: var(--accent-ink); border-color: var(--violet-line); }
+.heart:hover { transform: scale(1.09); color: var(--accent-ink); background: var(--night); }
+.heart:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.heart.on { color: var(--accent-ink); }
 .heart svg { width: 16px; height: 16px; }
 
-.top-item {
-  position: absolute; left: 12px; bottom: 12px;
-  background: var(--amber); color: var(--on-amber);
-  font-size: .68rem; font-weight: 800;
-  padding: 4px 10px; border-radius: 999px;
+.pcard-flag {
+  position: absolute; left: 10px; top: 10px;
+  font-size: .67rem; font-weight: 800;
+  letter-spacing: .03em;
+  padding: 5px 11px; border-radius: 999px;
+  z-index: 2;
+}
+.pcard-flag.top { background: var(--gold); color: var(--coal); }
+.pcard-flag.out { background: var(--coal); color: #fff; }
+
+.pcard-body { padding: 13px 4px 0; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+
+.pcard-cat {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
-/* The reference's card body: category kicker, name, crimson price, then a
-   full-width crimson action. Left-aligned, not centred. */
-.pcard-body { padding: 13px 8px 6px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
-.pcard-cat { font-size: .76rem; color: var(--ink-3); }
 .pcard-title {
-  font-size: 1.02rem;
+  font-size: 1rem;
   font-weight: 700;
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.35;
+  /* Two lines, then ellipsis — a single nowrap line cut "Boneless chicken
+     breast" down to "Boneless chick…". The reserved height keeps every card in
+     a row ending at the same place. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: calc(2 * 1.35em);
 }
-.pcard-price { margin: 0 0 4px; font-size: .95rem; color: var(--ink-2); display: flex; align-items: baseline; gap: 6px; }
-.pcard-price strong { color: var(--accent-ink); font-size: 1.16rem; font-weight: 800; }
+.pcard-title a { color: inherit; text-decoration: none; }
+.pcard-title a:hover { color: var(--accent-ink); }
+
+.pcard-rating { display: flex; align-items: center; gap: 6px; margin: 0; font-size: .78rem; color: var(--ink-3); }
+.pcard-rating strong { color: var(--ink-2); font-weight: 700; }
+.pcard-rating .stars svg { width: 13px; height: 13px; }
+
+.pcard-price { margin: 2px 0 0; font-size: .82rem; color: var(--ink-3); display: flex; align-items: baseline; gap: 6px; }
+.pcard-price strong { color: var(--accent-ink); font-size: 1.2rem; font-weight: 800; letter-spacing: -.01em; }
 .price-was { font-size: .78rem; color: var(--ink-3); text-decoration: line-through; }
+
+.pcard-stock { margin: 0; font-size: .74rem; font-weight: 700; color: var(--warn-ink); }
 
 .price-pill {
   display: flex;
@@ -686,18 +733,31 @@ a.ub-item:hover { color: #fff; }
   justify-content: center;
   gap: 9px;
   width: 100%;
-  margin-top: auto;
+  margin-top: 13px;
   border: 0;
   background: var(--violet);
   color: var(--on-accent);
   border-radius: 999px;
   padding: 11px 16px;
+  /* Fixed, so the button is the same size with or without its icon puck — and
+     44px is the smallest comfortable touch target besides. */
+  min-height: 44px;
   font-size: .88rem;
   font-weight: 700;
   cursor: pointer;
+  /* "Out of stock" wrapped to two lines in a narrow column, making that one
+     button taller than its neighbour in the same row. */
+  white-space: nowrap;
   transition: background .14s ease;
 }
+/* A cart icon on a button you cannot press is noise, and dropping it is what
+   buys the width the label needs. */
+.price-pill:disabled .puck { display: none; }
+/* Pushed to the bottom so every card in a row ends on the same line, whatever
+   the title or rating above it did. */
+.pcard-body .price-pill { margin-top: auto; }
 .price-pill:hover:not(:disabled) { background: var(--violet-600); }
+.price-pill:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
 .price-pill:disabled { opacity: .45; cursor: not-allowed; }
 .price-pill .puck {
   width: 22px; height: 22px; border-radius: 50%;
@@ -846,7 +906,7 @@ a.ub-item:hover { color: #fff; }
 
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; background: var(--night-3); color: var(--ink-2); border: 1px solid var(--line); }
 .badge.ok { background: var(--tint-ok); color: var(--ok); border-color: transparent; }
-.badge.warn { background: var(--tint-warn); color: var(--amber); border-color: transparent; }
+.badge.warn { background: var(--tint-warn); color: var(--warn-ink); border-color: transparent; }
 .badge.danger { background: var(--tint-danger); color: var(--red); border-color: transparent; }
 .badge.info { background: var(--violet-soft); color: var(--accent-ink); border-color: transparent; }
 .badge.brand { background: var(--violet-soft); color: var(--accent-ink); border-color: transparent; }
