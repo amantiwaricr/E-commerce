@@ -116,6 +116,45 @@ the database are all correct at the same time.
 
 ---
 
+## Free hosting, no domain
+
+Vercel, Netlify and Render all give you a `*.vercel.app` / `*.netlify.app` /
+`*.onrender.com` address with TLS, at no cost. The two front-ends deploy to
+them as they are.
+
+The API is the part that needs thought, for two reasons:
+
+**Uploads do not survive.** Product photographs go through `multer` to
+`server/uploads` on local disk. Serverless and free container tiers give you an
+ephemeral filesystem, so an uploaded image disappears on the next deploy or
+cold start. Either host the API somewhere with a real disk, or put images
+somewhere else and paste their URLs — the admin product form accepts a URL as
+well as a file, so this works today without code changes.
+
+**Two free subdomains are not the same site.** `shop.vercel.app` and
+`api.vercel.app` look related and are not: `vercel.app` is on the Public Suffix
+List, so browsers treat every deployment under it as a separate site, and a
+`SameSite=Lax` cookie is never sent between them. Sign-in still works, because
+the API returns a token in the login response and the client sends it as an
+`Authorization` header — but set `COOKIE_SAMESITE=none` and
+`COOKIE_SECURE=true` if you want the cookie to work too. `npm run predeploy`
+knows the difference and says which case you are in.
+
+A workable free split:
+
+| | where | why |
+|---|---|---|
+| storefront, admin | Vercel or Netlify | static, instant, free TLS |
+| API | Render / Railway / Fly free tier | a real process, not a function |
+| database | MongoDB Atlas free tier | 512 MB is plenty to start |
+| images | paste URLs, or an object store | the free tiers have no durable disk |
+
+Free API tiers usually sleep when idle, so the first request after a quiet
+period takes a few seconds. That is fine for a demo and not fine for a shop
+taking orders.
+
+---
+
 ## Things that bite
 
 **Pre-rendered routes must be served as themselves.** `npm run build` writes

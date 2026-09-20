@@ -48,6 +48,44 @@ const isPlaceholder = (value) =>
 const isLocal = (value) => /localhost|127\.0\.0\.1|\[?::1\]?|\.local\b/i.test(String(value || ''));
 const isHttps = (value) => /^https:\/\//i.test(String(value || ''));
 
+/**
+ * Suffixes under which every subdomain is a separate site.
+ *
+ * These are on the Public Suffix List, which is what browsers actually consult
+ * when deciding whether a cookie is first-party. Taking the last two labels —
+ * the obvious shortcut — calls `shop.vercel.app` and `api.vercel.app` the same
+ * site and tells you a plain cookie will work between them. It will not: they
+ * are as unrelated as two different companies, by design, because otherwise
+ * anyone's free deployment could read anyone else's cookies.
+ *
+ * Not the whole list, which runs to thousands of entries. These are the free
+ * hosts this project is likely to land on.
+ */
+const MULTI_TENANT_SUFFIXES = [
+  'vercel.app', 'netlify.app', 'onrender.com', 'railway.app', 'up.railway.app',
+  'fly.dev', 'herokuapp.com', 'pages.dev', 'workers.dev', 'github.io',
+  'glitch.me', 'azurewebsites.net', 'appspot.com', 'firebaseapp.com', 'web.app',
+  'surge.sh', 'koyeb.app', 'deno.dev', 'ngrok.io', 'ngrok-free.app',
+];
+
+/**
+ * Whether two URLs are the same site for cookie purposes — which is what
+ * decides whether the session survives without SameSite=None.
+ */
+const sameRegistrableSite = (a, b) => {
+  const host = (value) => { try { return new URL(value).hostname.toLowerCase(); } catch { return ''; } };
+  const [ha, hb] = [host(a), host(b)];
+  if (!ha || !hb) return false;
+  if (ha === hb) return true;
+
+  const suffix = MULTI_TENANT_SUFFIXES.find((s) => ha.endsWith(`.${s}`) || ha === s);
+  // Under a public suffix, only the exact same hostname is the same site.
+  if (suffix) return false;
+
+  const registrable = (h) => h.split('.').slice(-2).join('.');
+  return registrable(ha) === registrable(hb);
+};
+
 const section = (title) => console.log(`\n${title}`);
 
 /* ── secrets ─────────────────────────────────────────────────────────────── */
@@ -96,18 +134,19 @@ const checkUrls = (server, client, admin) => {
   });
   if (clean) ok('every public URL is https and not localhost');
 
-  // The SPA and the API sharing a site is what lets a plain SameSite cookie
-  // work. Different sites need SameSite=None, which needs Secure, and browsers
-  // that block third-party cookies will drop it regardless.
-  const site = (value) => { try { return new URL(value).hostname.split('.').slice(-2).join('.'); } catch { return ''; } };
-  const sameSite = site(server.FRONTEND_URL) && site(server.FRONTEND_URL) === site(server.BACKEND_URL);
+  const sameSite = sameRegistrableSite(server.FRONTEND_URL, server.BACKEND_URL);
 
   if (sameSite) ok('the site and the API are on the same registrable domain', 'session cookies work without SameSite=None');
   else if ((server.COOKIE_SAMESITE || '').toLowerCase() === 'none' && String(server.COOKIE_SECURE).toLowerCase() === 'true') {
     ok('cross-site deployment is configured', 'COOKIE_SAMESITE=none with COOKIE_SECURE=true');
   } else {
-    bad('the site and the API are on different domains, but cookies are not configured for that',
-        'Set COOKIE_SAMESITE=none and COOKIE_SECURE=true in server/.env, or put both behind one domain.');
+    // Worth stating plainly: sign-in still works here, because the API returns
+    // a token in the login response and the client sends it as a Bearer
+    // header. The cookie is the belt to that braces. Say so, rather than
+    // implying the deployment is broken.
+    warn('the site and the API are on different sites, so the session cookie will not be sent',
+         'Sign-in still works — the client holds a token and sends it as an Authorization header. '
+         + 'To have the cookie work too, set COOKIE_SAMESITE=none and COOKIE_SECURE=true, or put both behind one domain.');
   }
 
   if (String(server.COOKIE_SECURE).toLowerCase() !== 'true') {
@@ -234,4 +273,7 @@ const main = () => {
   return undefined;
 };
 
-main();
+if (require.main === module) main();
+
+// Exported for the test suite; the script still runs when invoked directly.
+module.exports = { sameRegistrableSite, MULTI_TENANT_SUFFIXES };
