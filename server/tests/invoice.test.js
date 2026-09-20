@@ -135,3 +135,44 @@ describe('rendering', () => {
     await expect(renderInvoicePdf(invoice)).resolves.toBeInstanceOf(Buffer);
   });
 });
+
+describe('the verification digest on the bill', () => {
+  const integrity = require('../src/services/integrity.service');
+
+  const withLedger = () => {
+    const order = {
+      orderNumber: 'FMN-2026-00184',
+      user: '65f0000000000000000000aa',
+      items: [{ product: 'p1', name: 'Goat curry cut', unit: 'kg', price: 1450, quantity: 2, subtotal: 2900 }],
+      itemsTotal: 2900, deliveryCharge: 100, totalAmount: 3000,
+      paymentMethod: 'esewa', paymentStatus: 'paid', deliveryMethod: 'standard',
+      shippingAddress: { recipientName: 'A', phone: '98', street: 'S', city: 'C' },
+      payment: {},
+      ledger: [],
+    };
+    integrity.appendEntry(order, { type: 'order.placed', data: integrity.placementFacts(order) });
+    return order;
+  };
+
+  it('carries the tip of the ledger, so the paper proves itself', () => {
+    const order = withLedger();
+    const invoice = buildInvoice(order, { name: 'A', email: 'a@b.c' });
+
+    expect(invoice.receipt.digest).toBe(order.ledger[order.ledger.length - 1].hash);
+    expect(invoice.receipt.digest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('moves with the ledger rather than being pinned to the first entry', () => {
+    const order = withLedger();
+    const first = buildInvoice(order, {}).receipt.digest;
+
+    integrity.appendEntry(order, { type: 'payment.settled', data: { amount: 3000 } });
+    expect(buildInvoice(order, {}).receipt.digest).not.toBe(first);
+  });
+
+  it('is absent, not invented, on an order with no ledger', () => {
+    const order = withLedger();
+    order.ledger = [];
+    expect(buildInvoice(order, {}).receipt).toBeNull();
+  });
+});

@@ -815,6 +815,49 @@ in PowerShell, the Windows command prompt, Git Bash and a Unix shell. The API's 
 read from `PORT` in `server/.env` rather than assumed, so the URLs it writes match the
 port the server actually listens on.
 
+### Transaction integrity — hashing and digital signatures
+
+Every money movement on an order — placed, paid, failed, cancelled — is appended to a
+per-order ledger as a hash-chained, digitally signed entry. Three mechanisms, three
+different properties, and they are routinely conflated:
+
+| | detects | mechanism |
+|---|---|---|
+| Hash | a changed entry | SHA-256 over a canonical form of its contents |
+| Chain | a deleted, inserted or reordered entry | each entry commits to the previous one's digest |
+| Signature | a **rewritten history** | Ed25519, with a key the database has never held |
+
+The third is the one that matters. Hashes alone protect nothing against an attacker who
+can write to the database — they would simply recompute the chain. A signature cannot be
+recomputed without the private key.
+
+```bash
+npm run keys:txn             # generate the Ed25519 signing key
+npm run keys:txn -- rotate   # replace it, keeping old signatures verifiable
+```
+
+Rotation keeps every retired **public** key in `TXN_VERIFY_KEYS`, and each entry records
+the `keyId` it was signed under, so a routine key change does not invalidate last year's
+receipts. With no key configured the ledger still hashes and chains — tamper-evident
+against the database — but reports itself as unsigned; production refuses to boot without
+one.
+
+**Why a signature rather than an HMAC**, when the eSewa integration already uses one: a
+shared secret cannot answer "did this server issue this record?" to anyone except the
+holder of the secret, who could equally have forged it. Only a public key lets a customer,
+an auditor or a court verify a receipt without also being able to produce one.
+
+**What is committed** is the financial fact, not the whole document. `orderStatus` and the
+delivery timeline change legitimately as an order moves, so hashing them would make every
+normal update look like tampering. The shipping address is committed as a digest rather
+than in the clear — the ledger is shown to auditors and printed on receipts, and a home
+address does not need to travel with it.
+
+Verify an order at `GET /api/orders/:orderNumber/integrity`. The customer sees the verdict
+and the receipt digest; an admin also gets the entries, which is what an auditor needs to
+check the chain independently rather than take the endpoint's word for it. The same digest
+is printed on the bill, so the PDF carries its own proof.
+
 ### "Not secure" on `https://localhost` — encryption is not trust
 
 A page can be served over TLS and still say **Not secure**, and the browser is right to

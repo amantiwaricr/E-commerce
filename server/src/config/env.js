@@ -87,6 +87,34 @@ const env = {
     minVersion: process.env.TLS_MIN_VERSION || 'TLSv1.2',
   },
 
+  /**
+   * Ed25519 keys for the transaction ledger's digital signatures.
+   *
+   * TXN_SIGNING_KEY is the PKCS#8 private key, as PEM or base64-of-PEM (a .env
+   * file mangles real newlines). TXN_VERIFY_KEYS holds the public halves of
+   * retired keys, so entries signed before a rotation still verify:
+   *   TXN_VERIFY_KEYS={"2025-01":"<base64 pem>","2026-01":"<base64 pem>"}
+   *
+   * With no key configured the ledger still hashes and chains — tamper-evident
+   * against the database — but cannot prove which server wrote it. Generate
+   * one with `npm run keys:txn`.
+   */
+  txnSigning: {
+    keyId: process.env.TXN_SIGNING_KEY_ID || 'default',
+    privateKey: process.env.TXN_SIGNING_KEY || '',
+    publicKeys: (() => {
+      const raw = process.env.TXN_VERIFY_KEYS;
+      if (!raw) return {};
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch {
+        // Logged at load time by the integrity service, which owns the keyring.
+        return {};
+      }
+    })(),
+  },
+
   esewa: {
     mode: esewaMode,
     isSandbox: esewaMode !== 'production',
@@ -177,6 +205,9 @@ const validateEnv = () => {
   const missing = [];
   if (!env.jwtSecret || env.jwtSecret === 'dev-only-insecure-secret') missing.push('JWT_SECRET');
   if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
+  // Unsigned money records are worth far less than signed ones, and the
+  // difference is invisible until someone needs to prove a transaction.
+  if (!env.txnSigning.privateKey) missing.push('TXN_SIGNING_KEY (run `npm run keys:txn`)');
   if (missing.length) {
     throw new Error(`Missing required environment variables in production: ${missing.join(', ')}`);
   }

@@ -1384,3 +1384,32 @@ tbody tr:hover { background: var(--row-hover); }
   .payopt-mark { width: 34px; height: 34px; border-radius: 10px; }
   .summary-total strong { font-size: 1.18rem; }
 }
+
+/* ══ Transaction integrity ═══════════════════════════════════
+   The verdict from re-verifying the order's signed ledger. Green is a claim
+   worth making carefully, so it appears only when every entry's hash, chain
+   link and signature checked out. */
+
+.integrity {
+  display: flex;
+  gap: 13px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--line-ok);
+  background: var(--tint-ok);
+}
+.integrity.bad { border-color: var(--line-danger); background: var(--tint-danger); }
+.integrity-mark { flex-shrink: 0; color: var(--ok); margin-top: 1px; }
+.integrity.bad .integrity-mark { color: var(--red); }
+.integrity-body { min-width: 0; }
+.integrity-body strong { display: block; font-size: .9rem; color: var(--ink); }
+.integrity-body p { margin: 3px 0 0; font-size: .79rem; color: var(--ink-2); line-height: 1.5; }
+.integrity-digest {
+  display: block;
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .68rem;
+  letter-spacing: .01em;
+  color: var(--ink-2);
+  word-break: break-all;
+}

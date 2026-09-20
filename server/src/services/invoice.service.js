@@ -50,9 +50,21 @@ const buildInvoice = (order, user) => {
   const deliveryCharge = round2(order.deliveryCharge || 0);
   const grandTotal = round2(itemsTotal + deliveryCharge);
 
+  /*
+   * The tip of the order's signed ledger, printed on the bill so the paper
+   * carries its own proof. Anyone holding the store's public key can check
+   * that this receipt matches the transaction the server signed, without
+   * asking the store to confirm it.
+   */
+  const ledger = order.ledger || [];
+  const receipt = ledger.length ? ledger[ledger.length - 1] : null;
+
   return {
     invoiceNumber: invoiceNumberFor(order),
     orderNumber: order.orderNumber,
+    receipt: receipt
+      ? { digest: receipt.hash, keyId: receipt.keyId, signed: Boolean(receipt.signature) }
+      : null,
     placedAt: order.placedAt || order.createdAt,
     deliveredAt: timelineAt(order, 'delivered'),
     issuedAt: new Date(),
@@ -228,6 +240,23 @@ const renderInvoicePdf = (invoice) =>
     doc.text(`Paid by ${invoice.payment.method} — ${invoice.payment.status}`, 50, y, { width: 245 });
     if (invoice.payment.reference) doc.text(`Reference ${invoice.payment.reference}`, 50, doc.y, { width: 245 });
     if (invoice.payment.paidAt) doc.text(`Paid on ${formatDate(invoice.payment.paidAt)}`, 50, doc.y, { width: 245 });
+
+    if (invoice.receipt?.digest) {
+      // Broken across two lines: 64 hex characters do not fit the page width,
+      // and a digest that wraps mid-character cannot be read back by hand.
+      const digest = invoice.receipt.digest;
+      doc.fontSize(7).fillColor(MUTED);
+      doc.text(
+        `Verification digest (SHA-256${invoice.receipt.signed ? ', Ed25519 signed' : ''}${
+          invoice.receipt.keyId ? `, key ${invoice.receipt.keyId}` : ''
+        })`,
+        50, 726, { width: 495, align: 'center' }
+      );
+      doc.font('Courier').fontSize(7).fillColor(MUTED);
+      doc.text(`${digest.slice(0, 32)}`, 50, 737, { width: 495, align: 'center' });
+      doc.text(`${digest.slice(32)}`, 50, 746, { width: 495, align: 'center' });
+      doc.font('Helvetica');
+    }
 
     doc.fontSize(8).fillColor(MUTED);
     doc.text(invoice.taxNote, 50, 760, { width: 495, align: 'center' });

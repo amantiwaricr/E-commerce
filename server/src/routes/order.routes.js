@@ -16,6 +16,7 @@ router.get('/', controller.listMyOrders);
 router.get('/:orderNumber', validate(validators.orderNumberParam), controller.getMyOrder);
 router.post('/:orderNumber/cancel', validate(validators.orderNumberParam), controller.cancelMyOrder);
 router.get('/:orderNumber/invoice', validate(validators.orderNumberParam), controller.downloadInvoice);
+router.get('/:orderNumber/integrity', validate(validators.orderNumberParam), controller.verifyOrderIntegrity);
 router.post('/:orderNumber/pay', paymentLimiter, validate(validators.orderNumberParam), controller.retryPayment);
 
 module.exports = router;

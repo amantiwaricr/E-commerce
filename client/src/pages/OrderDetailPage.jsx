@@ -6,6 +6,7 @@ import EmptyState from '../components/EmptyState';
 import StatusBadge from '../components/StatusBadge';
 import OrderTimeline from '../components/OrderTimeline';
 import InvoiceButton from '../components/InvoiceButton';
+import IntegrityBadge from '../components/IntegrityBadge';
 import { useToast } from '../context/ToastContext';
 import { formatDate, formatNpr } from '../utils/format';
 import { PAYMENT_METHOD_LABELS } from '../config';
@@ -135,6 +136,8 @@ export default function OrderDetailPage() {
             )}
             <OrderTimeline order={order} />
           </section>
+
+          <IntegrityBadge orderNumber={order.orderNumber} />
 
           <section className="panel">
             <h3>Items</h3>

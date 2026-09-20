@@ -6,6 +6,7 @@ const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const logger = require('../utils/logger');
 const esewaService = require('../services/esewa.service');
+const integrityService = require('../services/integrity.service');
 const { sendOrderConfirmation } = require('../services/notification.service');
 const { releaseStock } = require('./order.controller');
 const User = require('../models/User');
@@ -47,6 +48,19 @@ const settleEsewaPayment = async (encodedData) => {
   if (status.status !== 'COMPLETE') {
     order.paymentStatus = status.status === 'PENDING' ? 'unpaid' : 'failed';
     order.payment.rawStatusResponse = status.raw;
+    if (order.paymentStatus === 'failed') {
+      integrityService.appendEntry(order, {
+        type: 'payment.failed',
+        data: {
+          orderNumber: order.orderNumber,
+          provider: 'esewa',
+          transactionUuid: decoded.transaction_uuid,
+          reportedStatus: status.status,
+          amount: order.totalAmount,
+          currency: 'NPR',
+        },
+      });
+    }
     await order.save();
     throw ApiError.badRequest(`Payment is not complete (eSewa reported "${status.status}")`);
   }
@@ -55,6 +69,18 @@ const settleEsewaPayment = async (encodedData) => {
   if (round2(status.totalAmount) !== round2(order.totalAmount)) {
     order.paymentStatus = 'failed';
     order.payment.rawStatusResponse = status.raw;
+    integrityService.appendEntry(order, {
+      type: 'payment.failed',
+      data: {
+        orderNumber: order.orderNumber,
+        provider: 'esewa',
+        transactionUuid: decoded.transaction_uuid,
+        reportedStatus: 'AMOUNT_MISMATCH',
+        amount: round2(status.totalAmount),
+        expectedAmount: round2(order.totalAmount),
+        currency: 'NPR',
+      },
+    });
     await order.save();
     logger.error(
       `Amount mismatch for ${order.orderNumber}: eSewa ${status.totalAmount} vs order ${order.totalAmount}`
@@ -71,6 +97,15 @@ const settleEsewaPayment = async (encodedData) => {
     order.orderStatus = 'confirmed';
     order.pushTimeline('confirmed', `Payment received via eSewa (ref ${order.payment.referenceId})`);
   }
+
+  // Appended after the payment fields are set, so the entry commits to the
+  // reference and the time the money actually arrived.
+  integrityService.appendEntry(order, {
+    type: 'payment.settled',
+    data: integrityService.settlementFacts(order, status),
+    at: order.payment.paidAt,
+  });
+
   await order.save();
 
   const user = await User.findById(order.user);

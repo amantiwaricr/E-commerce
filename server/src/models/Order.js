@@ -55,6 +55,27 @@ const trackingEventSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * One hash-chained, signed record of a money movement. Append-only: entries are
+ * written once and never updated, which is what makes the chain meaningful.
+ */
+const ledgerEntrySchema = new mongoose.Schema(
+  {
+    seq: { type: Number, required: true, min: 0 },
+    type: { type: String, required: true },
+    at: { type: Date, required: true },
+    // The facts this entry commits to. Mixed because each event type records
+    // different ones; whatever is here is exactly what was hashed.
+    data: { type: mongoose.Schema.Types.Mixed, required: true },
+    prevHash: { type: String, default: '' },
+    hash: { type: String, required: true },
+    alg: { type: String, default: '' },
+    keyId: { type: String, default: '' },
+    signature: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 const paymentSchema = new mongoose.Schema(
   {
     // eSewa's `transaction_uuid` — our idempotency key for the payment attempt.
@@ -102,6 +123,9 @@ const orderSchema = new mongoose.Schema(
        and sparse: older orders have no key and must not collide on `null`. */
     idempotencyKey: { type: String, index: { unique: true, sparse: true }, select: false },
     cancelledReason: { type: String, trim: true, maxlength: 400, default: '' },
+    /* Tamper-evident history of this order's money movements. See
+       services/integrity.service.js for what each entry commits to. */
+    ledger: { type: [ledgerEntrySchema], default: [] },
     placedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

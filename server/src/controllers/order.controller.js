@@ -15,6 +15,7 @@ const esewaService = require('../services/esewa.service');
 const { sendOrderConfirmation } = require('../services/notification.service');
 const { buildInvoice, renderInvoicePdf } = require('../services/invoice.service');
 const { statusCondition, summariseOrders } = require('../utils/orderQuery');
+const integrityService = require('../services/integrity.service');
 const User = require('../models/User');
 
 /** Payment methods that are settled online through eSewa. */
@@ -157,6 +158,14 @@ const createOrder = asyncHandler(async (req, res) => {
       order.payment.provider = 'esewa';
     }
 
+    // Opens the order's tamper-evident ledger. Written in the same save as the
+    // order itself, so an order can never exist without its genesis entry.
+    integrityService.appendEntry(order, {
+      type: 'order.placed',
+      data: integrityService.placementFacts(order),
+      at: now,
+    });
+
     await order.save();
   } catch (err) {
     await releaseStock(priced.items);
@@ -273,6 +282,18 @@ const cancelMyOrder = asyncHandler(async (req, res) => {
   order.orderStatus = 'cancelled';
   order.cancelledReason = req.body.reason || 'Cancelled by customer';
   order.pushTimeline('cancelled', order.cancelledReason, req.user._id);
+
+  integrityService.appendEntry(order, {
+    type: 'order.cancelled',
+    data: {
+      orderNumber: order.orderNumber,
+      reason: order.cancelledReason,
+      by: req.user._id,
+      amountReleased: order.totalAmount,
+      paymentStatusAtCancellation: order.paymentStatus,
+    },
+  });
+
   await order.save();
 
   return res.json({ success: true, order: order.toJSON() });
@@ -306,6 +327,42 @@ const retryPayment = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * GET /api/orders/:orderNumber/integrity
+ *
+ * Re-verifies the order's ledger and reports what it found. The customer gets
+ * the verdict and the receipt digest; an admin also gets the entries
+ * themselves, which is what an auditor needs in order to check the chain
+ * independently rather than take this endpoint's word for it.
+ */
+const verifyOrderIntegrity = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ orderNumber: req.params.orderNumber });
+  if (!order) throw ApiError.notFound('Order not found');
+
+  const isOwner = order.user.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === 'admin';
+  if (!isOwner && !isAdmin) throw ApiError.forbidden('This order belongs to another account');
+
+  const report = integrityService.verifyLedger(order);
+
+  return res.json({
+    success: true,
+    orderNumber: order.orderNumber,
+    integrity: {
+      valid: report.valid,
+      signed: report.signed,
+      entries: report.entries,
+      receipt: report.tipHash,
+      algorithm: `${integrityService.HASH_ALGORITHM} + ${integrityService.SIGNATURE_ALGORITHM}`,
+      /* The specifics say what was changed and where. That is exactly what an
+         attacker who already holds the database would like to know, so it goes
+         to staff only; the customer is told whether their receipt stands. */
+      problems: isAdmin ? report.problems : undefined,
+      ledger: isAdmin ? order.ledger : undefined,
+    },
+  });
+});
+
 module.exports = {
   createOrder,
   listMyOrders,
@@ -313,6 +370,7 @@ module.exports = {
   cancelMyOrder,
   retryPayment,
   downloadInvoice,
+  verifyOrderIntegrity,
   reserveStock,
   releaseStock,
   ONLINE_METHODS,
