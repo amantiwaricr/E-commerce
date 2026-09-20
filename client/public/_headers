@@ -1,0 +1,17 @@
+# Asset filenames carry a content hash, so a given URL's bytes never change.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The HTML must not be cached, or a deploy leaves people on the old bundle
+# pointing at asset URLs that no longer exist.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/*/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+/robots.txt
+  Cache-Control: public, max-age=3600

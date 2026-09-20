@@ -1,0 +1,4 @@
+# Netlify. Existing files win, so the routes that `npm run build` pre-rendered
+# (/shop/index.html and the rest) are still served as themselves — this only
+# catches what is left, which is a deep link a crawler or a refresh asks for.
+/*  /index.html  200
