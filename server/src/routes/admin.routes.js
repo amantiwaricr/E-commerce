@@ -2,6 +2,7 @@
 
 const express = require('express');
 const adminController = require('../controllers/admin.controller');
+const insightsController = require('../controllers/adminInsights.controller');
 const productController = require('../controllers/product.controller');
 const uploadController = require('../controllers/upload.controller');
 const validate = require('../middleware/validate');
@@ -35,6 +36,13 @@ router.patch('/orders/:orderNumber/tracking', validate(validators.updateTracking
 
 // Users
 router.get('/users', adminController.listUsers);
+router.get('/users/:id', validate([validators.objectId('id')]), insightsController.getCustomer);
+
+// Stock room, money taken, the ledger audit and the store's configuration.
+router.get('/inventory', insightsController.getInventory);
+router.get('/payments', insightsController.listPayments);
+router.get('/ledger/audit', insightsController.auditLedger);
+router.get('/settings', insightsController.getSettings);
 router.patch('/users/:id/block', validate([validators.objectId('id')]), adminController.setUserBlocked);
 
 // Image uploads

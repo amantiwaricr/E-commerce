@@ -2,7 +2,7 @@
 
 const User = require('../../src/models/User');
 const Product = require('../../src/models/Product');
-const { signToken } = require('../../src/middleware/auth');
+const { signToken, SCOPES } = require('../../src/middleware/auth');
 
 let counter = 0;
 
@@ -43,6 +43,9 @@ const createProduct = async (overrides = {}) => {
 
 const authHeader = (user) => ({ Authorization: `Bearer ${signToken(user)}` });
 
+/** An admin-panel session: the admin API refuses storefront-scoped tokens. */
+const adminHeader = (user) => ({ Authorization: `Bearer ${signToken(user, SCOPES.ADMIN)}` });
+
 const shippingAddress = (overrides = {}) => ({
   recipientName: 'Sita Sharma',
   phone: '9801234567',
@@ -53,4 +56,4 @@ const shippingAddress = (overrides = {}) => ({
   ...overrides,
 });
 
-module.exports = { createUser, createAdmin, createProduct, authHeader, shippingAddress, DEFAULT_PASSWORD };
+module.exports = { createUser, createAdmin, createProduct, authHeader, adminHeader, shippingAddress, DEFAULT_PASSWORD };

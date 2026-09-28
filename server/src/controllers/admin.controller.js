@@ -10,6 +10,13 @@ const { releaseStock } = require('./order.controller');
 const { sendOrderStatusUpdate } = require('../services/notification.service');
 const { toCsv } = require('../utils/csv');
 const {
+  LOW_STOCK_THRESHOLD,
+  roleCondition,
+  orderStatusCondition,
+  paymentMethodCondition,
+  paymentStatusCondition,
+} = require('../utils/adminInsights');
+const {
   REPORT_TIMEZONE,
   periodRange,
   growth,
@@ -27,10 +34,17 @@ const HEATMAP_DAYS = 90;
 /** Shared by the order list and the CSV export so both honour the same filters. */
 const buildOrderFilter = (query = {}) => {
   const filter = {};
-  if (query.status) filter.orderStatus = query.status;
-  if (query.paymentMethod) filter.paymentMethod = query.paymentMethod;
-  if (query.paymentStatus) filter.paymentStatus = query.paymentStatus;
-  if (query.orderNumber) filter.orderNumber = String(query.orderNumber).trim().toUpperCase();
+  // Whitelisted: `?status[$ne]=x` parses to an object, and this filter also
+  // drives the CSV export — an operator from the URL would shape what leaves.
+  const status = orderStatusCondition(query.status);
+  const paymentMethod = paymentMethodCondition(query.paymentMethod);
+  const paymentStatus = paymentStatusCondition(query.paymentStatus);
+  if (status) filter.orderStatus = status;
+  if (paymentMethod) filter.paymentMethod = paymentMethod;
+  if (paymentStatus) filter.paymentStatus = paymentStatus;
+  if (typeof query.orderNumber === 'string' && query.orderNumber.trim()) {
+    filter.orderNumber = query.orderNumber.trim().toUpperCase();
+  }
   // An unparseable date is dropped rather than handed to Mongo as Invalid Date.
   const from = query.from ? new Date(query.from) : null;
   const to = query.to ? new Date(query.to) : null;
@@ -63,7 +77,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         { $group: { _id: null, total: { $sum: '$totalAmount' } } },
       ]),
       User.countDocuments({ role: 'customer' }),
-      Product.countDocuments({ stock: { $lte: 5 }, isAvailable: true }),
+      Product.countDocuments({ stock: { $lte: LOW_STOCK_THRESHOLD }, isAvailable: true }),
       Order.aggregate([{ $group: { _id: '$orderStatus', count: { $sum: 1 } } }]),
     ]);
 
@@ -179,7 +193,7 @@ const getAnalytics = asyncHandler(async (req, res) => {
       .limit(6)
       .select('name slug images stock unit price updatedAt')
       .lean(),
-    Product.find({ isAvailable: true, stock: { $lte: 5 } })
+    Product.find({ isAvailable: true, stock: { $lte: LOW_STOCK_THRESHOLD } })
       .sort({ stock: 1 })
       .limit(6)
       .select('name slug images stock unit price')
@@ -402,10 +416,11 @@ const listUsers = asyncHandler(async (req, res) => {
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
 
   const filter = {};
-  if (query.role) filter.role = query.role;
-  if (query.search) {
-    const term = String(query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    filter.$or = [{ name: new RegExp(term, 'i') }, { email: new RegExp(term, 'i') }];
+  const role = roleCondition(query.role);
+  if (role) filter.role = role;
+  if (typeof query.search === 'string' && query.search.trim()) {
+    const term = query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.$or = [{ name: new RegExp(term, 'i') }, { email: new RegExp(term, 'i') }, { phone: new RegExp(term, 'i') }];
   }
 
   const [users, total] = await Promise.all([
@@ -413,9 +428,42 @@ const listUsers = asyncHandler(async (req, res) => {
     User.countDocuments(filter),
   ]);
 
+  // Orders and spend for just the accounts on this page — one aggregate, not
+  // one query per row. Cancelled orders are counted but not spent.
+  const stats = users.length
+    ? await Order.aggregate([
+      { $match: { user: { $in: users.map((u) => u._id) } } },
+      {
+        $group: {
+          _id: '$user',
+          orders: { $sum: 1 },
+          spent: { $sum: { $cond: [{ $eq: ['$orderStatus', 'cancelled'] }, 0, '$totalAmount'] } },
+          lastOrderAt: { $max: '$createdAt' },
+        },
+      },
+    ])
+    : [];
+  const statsBy = new Map(stats.map((row) => [String(row._id), row]));
+
   return res.json({
     success: true,
-    users,
+    users: users.map((user) => {
+      const row = statsBy.get(String(user._id));
+      return {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        avatar: user.avatar || '',
+        role: user.role,
+        isBlocked: Boolean(user.isBlocked),
+        isEmailVerified: Boolean(user.isEmailVerified),
+        createdAt: user.createdAt,
+        orders: row?.orders || 0,
+        spent: row?.spent || 0,
+        lastOrderAt: row?.lastOrderAt || null,
+      };
+    }),
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
   });
 });

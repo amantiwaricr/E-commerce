@@ -110,19 +110,21 @@ const getFacets = asyncHandler(async (req, res) => {
   let histogram = [];
   if (max > min) {
     const width = (max - min) / HISTOGRAM_BUCKETS;
+    // Bucket by index rather than $bucket, whose upper bound is exclusive and
+    // would drop the most expensive product; the maximum lands in the last bar.
     const rows = await Product.aggregate([
       { $match: published },
       {
-        $bucket: {
-          groupBy: '$price',
-          boundaries: Array.from({ length: HISTOGRAM_BUCKETS + 1 }, (_, i) => min + i * width),
-          default: 'overflow',
-          output: { count: { $sum: 1 } },
+        $group: {
+          _id: {
+            $max: [0, { $min: [HISTOGRAM_BUCKETS - 1, { $floor: { $divide: [{ $subtract: ['$price', min] }, width] } }] }],
+          },
+          count: { $sum: 1 },
         },
       },
     ]);
-    const counts = new Map(rows.filter((r) => r._id !== 'overflow').map((r) => [Math.round(r._id), r.count]));
-    histogram = Array.from({ length: HISTOGRAM_BUCKETS }, (_, i) => counts.get(Math.round(min + i * width)) || 0);
+    const counts = new Map(rows.map((r) => [r._id, r.count]));
+    histogram = Array.from({ length: HISTOGRAM_BUCKETS }, (_, i) => counts.get(i) || 0);
   }
 
   return res.json({

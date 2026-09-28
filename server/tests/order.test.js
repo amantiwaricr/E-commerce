@@ -7,7 +7,7 @@ const createApp = require('../src/app');
 const Order = require('../src/models/Order');
 const Product = require('../src/models/Product');
 const Cart = require('../src/models/Cart');
-const { createUser, createAdmin, createProduct, authHeader, shippingAddress } = require('./helpers/factories');
+const { createUser, createAdmin, createProduct, authHeader, adminHeader, shippingAddress } = require('./helpers/factories');
 const esewa = require('../src/services/esewa.service');
 
 describeWithDb('Cart and order creation', () => {
@@ -107,13 +107,17 @@ describeWithDb('Cart and order creation', () => {
       .set(authHeader(customer))
       .send({ paymentMethod: 'cod', shippingAddress: shippingAddress() });
 
-    await addToCart(1);
+    // A different basket: an identical one would be (correctly) collapsed
+    // into the first order by checkout's double-submit protection.
+    await addToCart(2);
     const second = await request(app)
       .post('/api/orders')
       .set(authHeader(customer))
       .send({ paymentMethod: 'cod', shippingAddress: shippingAddress() });
 
     expect(first.body.order.orderNumber).not.toBe(second.body.order.orderNumber);
+    const seq = (order) => Number(order.orderNumber.split('-').pop());
+    expect(seq(second.body.order)).toBe(seq(first.body.order) + 1);
     expect(await Order.countDocuments({})).toBe(2);
   });
 
@@ -245,13 +249,13 @@ describeWithDb('Order tracking and lifecycle', () => {
 
     const processing = await request(app)
       .patch(`/api/admin/orders/${order.orderNumber}/status`)
-      .set(authHeader(admin))
+      .set(adminHeader(admin))
       .send({ status: 'processing', note: 'Butchering started' });
     expect(processing.status).toBe(200);
 
     const shipped = await request(app)
       .patch(`/api/admin/orders/${order.orderNumber}/status`)
-      .set(authHeader(admin))
+      .set(adminHeader(admin))
       .send({ status: 'shipped', note: 'Out with the rider' });
 
     expect(shipped.status).toBe(200);
@@ -269,7 +273,7 @@ describeWithDb('Order tracking and lifecycle', () => {
 
     const res = await request(app)
       .patch(`/api/admin/orders/${order.orderNumber}/status`)
-      .set(authHeader(admin))
+      .set(adminHeader(admin))
       .send({ status: 'delivered' });
 
     expect(res.status).toBe(400);
@@ -283,7 +287,7 @@ describeWithDb('Order tracking and lifecycle', () => {
       // eslint-disable-next-line no-await-in-loop
       await request(app)
         .patch(`/api/admin/orders/${order.orderNumber}/status`)
-        .set(authHeader(admin))
+        .set(adminHeader(admin))
         .send({ status });
     }
 
@@ -297,7 +301,7 @@ describeWithDb('Order tracking and lifecycle', () => {
 
     const res = await request(app)
       .patch(`/api/admin/orders/${order.orderNumber}/tracking`)
-      .set(authHeader(admin))
+      .set(adminHeader(admin))
       .send({ carrier: 'FMN Riders', trackingCode: 'RID-889', estimatedDelivery: 'Today, 6 PM', note: 'Rider assigned' });
 
     expect(res.status).toBe(200);
