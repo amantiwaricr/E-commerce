@@ -123,7 +123,10 @@ const getCustomer = asyncHandler(async (req, res) => {
 
 /* ── GET /api/admin/inventory ────────────────────────────────────────────── */
 
-const INVENTORY_VIEWS = ['all', 'ok', 'low', 'out', 'hidden'];
+// `attention` is low plus sold out: the same products the admin bell counts.
+const INVENTORY_VIEWS = ['all', 'attention', 'ok', 'low', 'out', 'hidden'];
+const inView = (view, status) =>
+  view === 'all' || status === view || (view === 'attention' && (status === 'low' || status === 'out'));
 
 /**
  * Every product with its stock, how fast it is selling, and how long what is
@@ -177,7 +180,7 @@ const getInventory = asyncHandler(async (req, res) => {
         stockValue: Math.round((Math.max(0, product.stock) || 0) * (product.price || 0) * 100) / 100,
       };
     })
-    .filter((row) => (view === 'all' || row.status === view)
+    .filter((row) => inView(view, row.status)
       && (!category || row.category === category)
       && (!pattern || pattern.test(row.name)));
 

@@ -27,6 +27,7 @@ export default function OrdersPage() {
     orderNumber: searchParams.get('orderNumber') || '',
     from: searchParams.get('from') || '',
     to: searchParams.get('to') || '',
+    user: searchParams.get('user') || '',
   };
 
   const setFilter = (patch) => {
@@ -161,6 +162,19 @@ export default function OrdersPage() {
         </button>
       </div>
 
+      {filters.user && (
+        <div className="alert info row">
+          <span>
+            Showing orders from one customer
+            {orders[0]?.user?.name ? <> — <strong>{orders[0].user.name}</strong></> : null}.
+          </span>
+          <Link className="link" to={`/users/${filters.user}`}>View customer</Link>
+          <button type="button" className="btn ghost sm" onClick={() => setFilter({ user: '' })}>
+            Show everyone’s orders
+          </button>
+        </div>
+      )}
+
       {error && <div className="alert error">{error}</div>}
 
       {loading ? (
@@ -190,7 +204,11 @@ export default function OrdersPage() {
                       <div className="small muted">{order.items.length} item(s)</div>
                     </td>
                     <td>
-                      {order.user?.name || '—'}
+                      {order.user?._id ? (
+                        <Link className="link" to={`/users/${order.user._id}`}>{order.user.name}</Link>
+                      ) : (
+                        order.user?.name || '—'
+                      )}
                       <div className="small muted">{order.shippingAddress?.phone}</div>
                     </td>
                     <td className="small muted">{formatDate(order.createdAt)}</td>

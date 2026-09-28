@@ -13,12 +13,26 @@ const GROUPS = [
     links: [{ to: '/', label: 'Dashboard', icon: 'dashboard', end: true }],
   },
   {
-    label: 'Manage',
+    label: 'Sales',
+    links: [
+      { to: '/orders', label: 'Orders', icon: 'receipt' },
+      { to: '/payments', label: 'Payments', icon: 'wallet' },
+    ],
+  },
+  {
+    label: 'Catalogue',
     links: [
       { to: '/products', label: 'Products', icon: 'box' },
-      { to: '/orders', label: 'Orders', icon: 'receipt' },
-      { to: '/users', label: 'Customers', icon: 'users' },
+      { to: '/inventory', label: 'Inventory', icon: 'layers' },
     ],
+  },
+  {
+    label: 'People',
+    links: [{ to: '/users', label: 'Customers', icon: 'users' }],
+  },
+  {
+    label: 'Store',
+    links: [{ to: '/settings', label: 'Settings', icon: 'settings' }],
   },
 ];
 
@@ -88,7 +102,7 @@ export default function Layout() {
                   <Icon name={link.icon} size={17} />
                   {link.label}
                   {link.to === '/orders' && stats?.pendingOrders > 0 && <span className="tally">{stats.pendingOrders}</span>}
-                  {link.to === '/products' && lowStock > 0 && <span className="tally">{lowStock}</span>}
+                  {link.to === '/inventory' && lowStock > 0 && <span className="tally">{lowStock}</span>}
                 </NavLink>
               ))}
             </nav>
@@ -127,7 +141,7 @@ export default function Layout() {
           </form>
 
           <div className="who">
-            <NavLink className="icon-btn" to="/products" aria-label={`${lowStock} products low on stock`} title="Low stock">
+            <NavLink className="icon-btn" to="/inventory?status=attention" aria-label={`${lowStock} products low on stock`} title="Low stock">
               <Icon name="bell" size={16} />
               {lowStock > 0 && <span className="dot">{lowStock > 9 ? '9+' : lowStock}</span>}
             </NavLink>

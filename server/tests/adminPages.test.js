@@ -128,6 +128,10 @@ describeWithDb('Admin panel detail pages', () => {
       const low = await get('/inventory?status=low');
       expect(low.body.products.map((p) => p.name)).toEqual(['Chicken breast']);
 
+      // What the admin bell counts: low and sold out, stock ascending.
+      const attention = await get('/inventory?status=attention');
+      expect(attention.body.products.map((p) => p.name)).toEqual(['Buff mince', 'Chicken breast']);
+
       const search = await get('/inventory?search=goat');
       expect(search.body.products.map((p) => p.name)).toEqual(['Goat curry cut']);
 
@@ -200,6 +204,22 @@ describeWithDb('Admin panel detail pages', () => {
       [env.jwtSecret, SIGNING_KEY, env.txnSigning?.privateKey, env.esewa?.secretKey, env.mail?.password]
         .filter((secret) => typeof secret === 'string' && secret.length >= 6)
         .forEach((secret) => expect(body).not.toContain(secret));
+    });
+  });
+
+  describe('GET /orders?user=', () => {
+    it('lists one customer’s orders and ignores a user filter that is not an id', async () => {
+      const other = await createUser({ name: 'Ramesh Thapa' });
+      await placeOrder(goat, 1);
+      await placeOrder(chicken, 1, other);
+
+      const mine = await get(`/orders?user=${customer._id}`);
+      expect(mine.status).toBe(200);
+      expect(mine.body.orders.map((o) => o.user.name)).toEqual(['Sita Sharma']);
+
+      const injected = await get('/orders?user[$ne]=65f0000000000000000000aa');
+      expect(injected.status).toBe(200);
+      expect(injected.body.orders).toHaveLength(2);
     });
   });
 

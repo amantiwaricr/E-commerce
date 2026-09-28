@@ -45,6 +45,9 @@ const buildOrderFilter = (query = {}) => {
   if (typeof query.orderNumber === 'string' && query.orderNumber.trim()) {
     filter.orderNumber = query.orderNumber.trim().toUpperCase();
   }
+  // One customer's orders, from their detail page. Anything that is not a
+  // plain ObjectId string is ignored rather than cast.
+  if (typeof query.user === 'string' && /^[a-f0-9]{24}$/i.test(query.user)) filter.user = query.user;
   // An unparseable date is dropped rather than handed to Mongo as Invalid Date.
   const from = query.from ? new Date(query.from) : null;
   const to = query.to ? new Date(query.to) : null;

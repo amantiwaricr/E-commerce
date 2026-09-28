@@ -12,6 +12,10 @@ import ProductFormPage from './pages/ProductFormPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import UsersPage from './pages/UsersPage';
+import CustomerDetailPage from './pages/CustomerDetailPage';
+import InventoryPage from './pages/InventoryPage';
+import PaymentsPage from './pages/PaymentsPage';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
   return (
@@ -27,7 +31,11 @@ export default function App() {
             <Route path="products/:id" element={<ProductFormPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="inventory" element={<InventoryPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="users/:id" element={<CustomerDetailPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route
               path="*"
               element={<EmptyState title="404 — page not found" actionLabel="Back to dashboard" actionTo="/" />}

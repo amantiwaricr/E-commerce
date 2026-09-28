@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
 import Loader from '../components/Loader';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
 import { useToast } from '../context/ToastContext';
-import { formatDay } from '../utils/format';
+import { formatDay, formatNpr, timeAgo } from '../utils/format';
 
 export default function UsersPage() {
   const toast = useToast();
@@ -46,8 +47,10 @@ export default function UsersPage() {
   return (
     <>
       <div className="page-head">
-        <h1>Customers</h1>
-        <span className="muted small">{pagination.total ?? 0} accounts</span>
+        <div>
+          <h1>Customers</h1>
+          <div className="sub">{pagination.total ?? 0} accounts. Open one to see their orders, spend and favourites.</div>
+        </div>
       </div>
 
       <div className="filter-bar">
@@ -65,7 +68,7 @@ export default function UsersPage() {
             id="search"
             value={filters.search}
             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
-            placeholder="Name or email"
+            placeholder="Name, email or phone"
           />
         </div>
       </div>
@@ -82,10 +85,11 @@ export default function UsersPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
+                  <th>Customer</th>
                   <th>Phone</th>
-                  <th>Role</th>
+                  <th className="num">Orders</th>
+                  <th className="num">Spent</th>
+                  <th>Last order</th>
                   <th>Joined</th>
                   <th>Status</th>
                   <th />
@@ -95,13 +99,19 @@ export default function UsersPage() {
                 {users.map((user) => (
                   <tr key={user._id}>
                     <td>
-                      <strong>{user.name}</strong>
+                      <Link className="cell-person" to={`/users/${user._id}`}>
+                        <span className="avatar">{(user.name || user.email || '?').trim().charAt(0).toUpperCase()}</span>
+                        <span>
+                          <strong>{user.name}</strong>
+                          {user.role === 'admin' && <span className="badge gold">admin</span>}
+                          <span className="small muted">{user.email}</span>
+                        </span>
+                      </Link>
                     </td>
-                    <td className="small">{user.email}</td>
                     <td className="small">{user.phone || '—'}</td>
-                    <td>
-                      <span className={`badge ${user.role === 'admin' ? 'brand' : ''}`}>{user.role}</span>
-                    </td>
+                    <td className="num">{user.orders || <span className="muted">0</span>}</td>
+                    <td className="num">{user.spent ? <strong>{formatNpr(user.spent)}</strong> : <span className="muted">—</span>}</td>
+                    <td className="small muted">{user.lastOrderAt ? timeAgo(user.lastOrderAt) : 'Never'}</td>
                     <td className="small muted">{formatDay(user.createdAt)}</td>
                     <td>
                       <span className={`badge ${user.isBlocked ? 'danger' : 'ok'}`}>
@@ -109,15 +119,18 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td>
-                      {user.role !== 'admin' && (
-                        <button
-                          type="button"
-                          className={`btn sm ${user.isBlocked ? 'secondary' : 'danger'}`}
-                          onClick={() => toggleBlock(user)}
-                        >
-                          {user.isBlocked ? 'Unblock' : 'Block'}
-                        </button>
-                      )}
+                      <div className="row nowrap">
+                        <Link className="btn secondary sm" to={`/users/${user._id}`}>View</Link>
+                        {user.role !== 'admin' && (
+                          <button
+                            type="button"
+                            className={`btn sm ${user.isBlocked ? 'secondary' : 'quiet-danger'}`}
+                            onClick={() => toggleBlock(user)}
+                          >
+                            {user.isBlocked ? 'Unblock' : 'Block'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
