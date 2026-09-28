@@ -4,7 +4,8 @@ const ORDER_TONES = {
   processing: 'info',
   shipped: 'gold',
   delivered: 'ok',
-  cancelled: 'danger',
+  // A cancellation is an outcome, not an alarm: kept plain.
+  cancelled: '',
 };
 
 const PAYMENT_TONES = { unpaid: 'warn', paid: 'ok', failed: 'danger', refunded: 'info' };
