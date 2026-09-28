@@ -3,6 +3,7 @@
 const express = require('express');
 const adminController = require('../controllers/admin.controller');
 const insightsController = require('../controllers/adminInsights.controller');
+const reviewController = require('../controllers/review.controller');
 const productController = require('../controllers/product.controller');
 const uploadController = require('../controllers/upload.controller');
 const validate = require('../middleware/validate');
@@ -43,6 +44,9 @@ router.get('/inventory', insightsController.getInventory);
 router.get('/payments', insightsController.listPayments);
 router.get('/ledger/audit', insightsController.auditLedger);
 router.get('/settings', insightsController.getSettings);
+// Review moderation. Hiding keeps the review but drops it from the rating.
+router.get('/reviews', reviewController.adminListReviews);
+router.patch('/reviews/:id', validate(validators.setReviewHidden), reviewController.adminSetReviewHidden);
 router.patch('/users/:id/block', validate([validators.objectId('id')]), adminController.setUserBlocked);
 
 // Image uploads

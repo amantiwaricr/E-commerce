@@ -1,6 +1,7 @@
 'use strict';
 
 const Product = require('../models/Product');
+const Review = require('../models/Review');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -199,8 +200,8 @@ const adminGetProduct = asyncHandler(async (req, res) => {
 
 /** POST /api/admin/products */
 const createProduct = asyncHandler(async (req, res) => {
-  const { name, description, category, price, stock, images, isAvailable, unit, tags, rating, reviewCount, isFeatured } =
-    req.body;
+  // No rating or review count: those come from customer reviews only.
+  const { name, description, category, price, stock, images, isAvailable, unit, tags, isFeatured } = req.body;
   const product = await Product.create({
     name,
     description,
@@ -212,8 +213,6 @@ const createProduct = asyncHandler(async (req, res) => {
     tags: Array.isArray(tags) ? tags : [],
     isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
     isFeatured: Boolean(isFeatured),
-    rating: rating || 0,
-    reviewCount: reviewCount || 0,
   });
   return res.status(201).json({ success: true, product: product.toJSON() });
 });
@@ -225,7 +224,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 
   const updatable = [
     'name', 'description', 'category', 'price', 'stock', 'unit',
-    'images', 'isAvailable', 'tags', 'rating', 'reviewCount', 'isFeatured',
+    'images', 'isAvailable', 'tags', 'isFeatured',
   ];
   for (const field of updatable) {
     if (req.body[field] !== undefined) product[field] = req.body[field];
@@ -239,6 +238,8 @@ const updateProduct = asyncHandler(async (req, res) => {
 const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findByIdAndDelete(req.params.id);
   if (!product) throw ApiError.notFound('Product not found');
+  // Its reviews go with it; they describe a product that no longer exists.
+  await Review.deleteMany({ product: product._id });
   return res.json({ success: true, message: 'Product deleted' });
 });
 

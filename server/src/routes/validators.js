@@ -25,8 +25,6 @@ const productBody = (partial = false) => {
     body('tags.*').optional().isString().trim().isLength({ max: 40 }),
     body('isAvailable').optional().isBoolean().toBoolean(),
     body('isFeatured').optional().isBoolean().toBoolean(),
-    body('rating').optional().isFloat({ min: 0, max: 5 }).toFloat(),
-    body('reviewCount').optional().isInt({ min: 0 }).toInt(),
   ];
 };
 
@@ -45,10 +43,30 @@ const shippingAddressBody = [
   body('shippingAddress.notes').optional().trim().isLength({ max: 400 }),
 ];
 
+/* A rating is whole stars. The comment is optional plain text; React escapes
+   it on the way out, so it is stored exactly as written. */
+const saveReview = [
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('Choose from 1 to 5 stars').toInt(),
+  body('comment')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('Comment must be text')
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Keep the comment under 1,000 characters'),
+];
+
+const setReviewHidden = [
+  objectId('id'),
+  body('isHidden').isBoolean({ strict: true }).withMessage('isHidden must be true or false'),
+];
+
 module.exports = {
   objectId,
   productBody,
   shippingAddressBody,
+  saveReview,
+  setReviewHidden,
 
   register: [
     body('name').trim().notEmpty().withMessage('Your name is required').isLength({ max: 120 }),

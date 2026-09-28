@@ -5,6 +5,8 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import QuantityStepper from '../components/QuantityStepper';
 import TrustStrip from '../components/TrustStrip';
+import ProductReviews from '../components/ProductReviews';
+import Stars from '../components/Stars';
 import { useCart } from '../context/CartContext';
 import useSeo from '../hooks/useSeo';
 import { breadcrumbs, product as productSchema } from '../seo/schema';
@@ -139,6 +141,18 @@ export default function ProductDetailPage() {
           <span className="badge">{product.category}</span>
           <h1 style={{ fontSize: '1.4rem', marginTop: 10 }}>{product.name}</h1>
 
+          {product.reviewCount > 0 ? (
+            <a className="pd-rating" href="#reviews">
+              <Stars value={product.rating} size={16} />
+              <strong>{Number(product.rating).toFixed(1)}</strong>
+              <span>
+                {product.reviewCount} rating{product.reviewCount === 1 ? '' : 's'}
+              </span>
+            </a>
+          ) : (
+            <a className="pd-rating empty" href="#reviews">No ratings yet</a>
+          )}
+
           <p className="price" style={{ fontSize: '1.5rem' }}>
             {formatNpr(product.price)} <span>/ {product.unit}</span>
           </p>
@@ -175,6 +189,13 @@ export default function ProductDetailPage() {
           </ul>
         </aside>
       </div>
+
+      <ProductReviews
+        slug={product.slug}
+        onSummary={(summary) =>
+          setProduct((p) => ({ ...p, rating: summary.average, reviewCount: summary.count }))
+        }
+      />
     </div>
   );
 }

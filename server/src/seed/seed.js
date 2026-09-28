@@ -16,6 +16,7 @@ const { env } = require('../config/env');
 const { connectDB, disconnectDB } = require('../config/db');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const { syncAllProductRatings } = require('../services/rating.service');
 
 const products = require('./products.data');
 
@@ -44,6 +45,10 @@ const seedProducts = async ({ fresh }) => {
     }
   }
   log(`products: ${created} created, ${updated} updated`);
+
+  // Ratings come only from customer reviews, never from seed data.
+  const { corrected } = await syncAllProductRatings();
+  if (corrected) log(`ratings: ${corrected} product(s) reset to match their reviews`);
 };
 
 const seedAdmin = async () => {

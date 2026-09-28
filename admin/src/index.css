@@ -823,6 +823,26 @@ tr.row-danger td:first-child { box-shadow: inset 3px 0 0 var(--ink); }
 .checks li.info svg { color: var(--ink-faint); }
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
 
+/* ── Reviews ────────────────────────────────────────────────────────────── */
+.rating-stars { display: inline-flex; gap: 1px; vertical-align: middle; }
+.rating-stars svg { fill: var(--line-strong); }
+.rating-stars svg.on { fill: var(--ink); }
+
+.review-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.review-row { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) auto; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--line); align-items: start; }
+.review-row:last-child { border-bottom: 0; }
+.review-row.hidden { background: var(--surface-sunken); }
+.review-row.hidden .review-content p { color: var(--ink-soft); }
+.review-product { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.review-product img { width: 40px; height: 40px; border-radius: 9px; object-fit: cover; flex-shrink: 0; }
+.review-product > div { min-width: 0; display: grid; gap: 2px; }
+.review-content { display: grid; gap: 6px; min-width: 0; }
+.review-content p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; line-height: 1.5; }
+
+.field-label { font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+.rating-readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.rating-readout .link { margin-left: auto; }
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1240px) {
   .dash { grid-template-columns: minmax(280px, 1fr) minmax(0, 1.5fr); }
@@ -858,4 +878,6 @@ tr.row-danger td:first-child { box-shadow: inset 3px 0 0 var(--ink); }
   .seg { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; scrollbar-width: none; }
   .toolbar-fields, .toolbar-fields > * { flex: 1; }
   .settings-grid { grid-template-columns: minmax(0, 1fr); }
+  .review-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .review-row .review-content { grid-column: 1 / -1; grid-row: 2; }
 }

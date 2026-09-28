@@ -7,15 +7,9 @@ import { useFavourites } from '../context/FavouritesContext';
 
 const idOf = (product) => product.id || product._id;
 
-/** Deterministic sample of recent scores, so the chips never reshuffle on render. */
-const chipScores = (rating) => {
-  const base = Number(rating) || 4.5;
-  return [
-    { score: base.toFixed(1), who: 'A' },
-    { score: Math.min(5, base - 0.1).toFixed(1), who: 'S' },
-    { score: '5.0', who: 'R' },
-  ];
-};
+/** The product's latest real ratings, newest first. None means no chips. */
+const recentScores = (product) =>
+  (product.recentRatings || []).slice(0, 3).map((r) => ({ score: Number(r.rating).toFixed(1), who: r.initial || '?' }));
 
 /** Full-bleed hero tile occupying one grid cell. */
 export default function FeatureCard({ product }) {
@@ -34,8 +28,8 @@ export default function FeatureCard({ product }) {
         <img src={product.images[0]} alt="" onError={() => setBroken(true)} />
       )}
 
-      {chipScores(product.rating).map((chip, i) => (
-        <span className={`rating-chip c${i + 1}`} key={chip.who}>
+      {recentScores(product).map((chip, i) => (
+        <span className={`rating-chip c${i + 1}`} key={`${chip.who}-${i}`}>
           <span className="who">{chip.who}</span>
           {chip.score}/5
           <StarIcon />

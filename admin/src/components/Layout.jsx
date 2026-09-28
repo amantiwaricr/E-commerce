@@ -24,6 +24,7 @@ const GROUPS = [
     links: [
       { to: '/products', label: 'Products', icon: 'box' },
       { to: '/inventory', label: 'Inventory', icon: 'layers' },
+      { to: '/reviews', label: 'Reviews', icon: 'star' },
     ],
   },
   {

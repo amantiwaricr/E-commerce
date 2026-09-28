@@ -17,6 +17,7 @@ import CustomerDetailPage from './pages/CustomerDetailPage';
 import InventoryPage from './pages/InventoryPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SettingsPage from './pages/SettingsPage';
+import ReviewsPage from './pages/ReviewsPage';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="inventory" element={<InventoryPage />} />
+            <Route path="reviews" element={<ReviewsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="users/:id" element={<CustomerDetailPage />} />
             <Route path="settings" element={<SettingsPage />} />

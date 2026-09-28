@@ -9,6 +9,7 @@ const { env, validateEnv } = require('./config/env');
 const { connectDB } = require('./config/db');
 const createApp = require('./app');
 const logger = require('./utils/logger');
+const { syncAllProductRatings } = require('./services/rating.service');
 
 /**
  * Serves TLS from Node when a key and certificate are configured, and plain
@@ -47,6 +48,8 @@ const createServer = (app) => {
 const start = async () => {
   validateEnv();
   await connectDB();
+  // Ratings are derived from reviews; repair any that drifted while stopped.
+  await syncAllProductRatings().catch((err) => logger.warn(`Rating sync skipped: ${err.message}`));
 
   const app = createApp();
   const server = createServer(app);

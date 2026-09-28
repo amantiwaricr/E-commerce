@@ -526,6 +526,8 @@ The suites cover the critical flows:
 | `tests/units.test.js` | Pricing rules, phone normalisation, input sanitising, notification templates |
 | `tests/upload.test.js` | Admin image upload: storage, mimetype rejection, empty requests |
 | `tests/catalogue.test.js` | Facets, tag and rating filters, favourites |
+| `tests/reviews.test.js` | Rating arithmetic, reviewer name privacy, who may rate (no database needed) |
+| `tests/reviewsFlow.test.js` | Rating after delivery only, one vote per customer, edits, moderation, start-up repair |
 | `tests/devlogin.test.js` | Development login: disabled by default, refused in production, roles when enabled |
 
 `esewa.test.js`, `units.test.js` and `upload.test.js` need nothing but Node. The other three need MongoDB:
@@ -578,6 +580,14 @@ Every response is JSON. Errors come back as
 | GET | `/api/products/facets` | Public | Price bounds + histogram, tag counts, category counts, rating counts — everything the sidebar needs in one call |
 | GET | `/api/products/categories` | Public | Categories with product counts |
 | GET | `/api/products/:slug` | Public | Product detail |
+| GET | `/api/products/:slug/reviews` | Public | Rating summary and reviews; `sort` (`newest`, `highest`, `lowest`), `stars`, `page` |
+| GET | `/api/products/:slug/reviews/mine` | Customer | Whether you may rate it, and your review |
+| PUT | `/api/products/:slug/reviews/mine` | Customer | Rate 1–5 stars with an optional comment; rating again edits it |
+| DELETE | `/api/products/:slug/reviews/mine` | Customer | Remove your rating |
+
+A customer can rate a product once an order containing it has been
+**delivered**, and each customer counts once. Reviews show the reviewer as
+"Sita S.", never a full surname or email.
 
 ### Favourites
 | Method | Endpoint | Access | Description |
@@ -632,6 +642,8 @@ Every response is JSON. Errors come back as
 | PATCH | `/api/admin/orders/:orderNumber/tracking` | Carrier, code, ETA, timeline note |
 | GET | `/api/admin/users` | List customers |
 | PATCH | `/api/admin/users/:id/block` | Block / unblock |
+| GET | `/api/admin/reviews` | All reviews; `stars`, `status` (`visible`, `hidden`), `search`, `product` |
+| PATCH | `/api/admin/reviews/:id` | `{ isHidden }` — hide an abusive review (it stops counting) or show it again |
 
 ---
 
@@ -670,9 +682,14 @@ the bill says the shop is not VAT registered rather than inventing a tax breakdo
 `addresses[]`, `favourites[]`, `isBlocked`, `lastLoginAt`, timestamps.
 
 **Product** — `name`, `slug` (unique, indexed), `description`, `category`, `price`, `unit`,
-`stock`, `images[]`, `isAvailable`, `tags[]`, `rating`, `reviewCount`, `isFeatured`, timestamps.
+`stock`, `images[]`, `isAvailable`, `tags[]`, `rating`, `reviewCount`, `recentRatings[]`, `isFeatured`, timestamps.
 Text index on name/description/tags; compound index on `category + price`; index on `rating`.
+`rating`, `reviewCount` and `recentRatings` are derived from visible reviews and cannot be
+set by hand; the API recomputes them on every review change and on start-up.
 A product rated 4.8+ earns the storefront's "Top item" flag; the featured one takes the hero tile.
+
+**Review** — `product`, `user` (unique together), `order` (the delivery that qualified
+them), `rating` (whole stars 1–5), `comment` (≤ 1,000 characters), `isHidden`, timestamps.
 
 **Cart** — `user` (unique), `items[{ product, quantity }]`.
 

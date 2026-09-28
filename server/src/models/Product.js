@@ -22,9 +22,21 @@ const productSchema = new mongoose.Schema(
     },
     isAvailable: { type: Boolean, default: true, index: true },
     tags: { type: [String], default: [], index: true },
-    // Aggregate customer rating, shown on cards and filterable from the sidebar.
+    // Aggregate customer rating, shown on cards and filterable from the
+    // sidebar. Derived from visible reviews by services/rating.service.js and
+    // never written by hand, so the number always matches the reviews shown.
     rating: { type: Number, min: 0, max: 5, default: 0 },
     reviewCount: { type: Number, min: 0, default: 0 },
+    // The latest few ratings, for the storefront's featured tile.
+    recentRatings: {
+      type: [
+        new mongoose.Schema(
+          { initial: { type: String, maxlength: 1 }, rating: { type: Number, min: 1, max: 5 }, at: Date },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
     // Highlights one product per view in the storefront's feature tile.
     isFeatured: { type: Boolean, default: false, index: true },
   },

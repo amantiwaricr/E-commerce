@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge';
 import OrderTimeline from '../components/OrderTimeline';
 import InvoiceButton from '../components/InvoiceButton';
 import IntegrityBadge from '../components/IntegrityBadge';
+import { StarIcon } from '../components/icons';
 import { useToast } from '../context/ToastContext';
 import { formatDate, formatNpr } from '../utils/format';
 import { PAYMENT_METHOD_LABELS } from '../config';
@@ -141,6 +142,9 @@ export default function OrderDetailPage() {
 
           <section className="panel">
             <h3>Items</h3>
+            {order.orderStatus === 'delivered' && (
+              <p className="small muted" style={{ marginTop: -6 }}>Delivered — rate what you received to help other customers.</p>
+            )}
             {order.items.map((item) => (
               <div className="cart-line" key={item.slug}>
                 {item.image ? <img src={item.image} alt="" /> : <div className="placeholder" />}
@@ -149,6 +153,11 @@ export default function OrderDetailPage() {
                   <p className="small muted" style={{ margin: '4px 0 0' }}>
                     {formatNpr(item.price)} / {item.unit} × {item.quantity}
                   </p>
+                  {order.orderStatus === 'delivered' && (
+                    <Link className="rate-link" to={`/products/${item.slug}#reviews`}>
+                      <StarIcon width={14} height={14} /> Rate this
+                    </Link>
+                  )}
                 </div>
                 <strong>{formatNpr(item.subtotal)}</strong>
               </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import Loader from '../components/Loader';
 import { useToast } from '../context/ToastContext';
@@ -96,12 +96,13 @@ export default function ProductFormPage() {
     setError('');
     setFieldErrors({});
 
+    // Rating and review count are shown, never sent: the API derives them.
+    // eslint-disable-next-line no-unused-vars
+    const { rating, reviewCount, ...editable } = form;
     const payload = {
-      ...form,
+      ...editable,
       price: Number(form.price),
       stock: Number(form.stock),
-      rating: form.rating === '' ? 0 : Number(form.rating),
-      reviewCount: form.reviewCount === '' ? 0 : Number(form.reviewCount),
       tags: Array.isArray(form.tags)
         ? form.tags
         : String(form.tags)
@@ -230,26 +231,26 @@ export default function ProductFormPage() {
           )}
         </div>
 
-        <div className="field-row">
+        {/* Read-only: the rating is the average of customer reviews, never typed in. */}
+        {id && (
           <div className="field">
-            <label htmlFor="rating">Customer rating (0–5)</label>
-            <input
-              id="rating"
-              type="number"
-              min="0"
-              max="5"
-              step="0.1"
-              value={form.rating}
-              onChange={setField('rating')}
-            />
-            {fieldErrors.rating && <span className="error">{fieldErrors.rating}</span>}
-            <span className="small muted">4.8 and above earns the storefront&apos;s “Top item” flag.</span>
+            <span className="field-label">Customer rating</span>
+            <div className="rating-readout">
+              {Number(form.reviewCount) > 0 ? (
+                <>
+                  <strong>{Number(form.rating).toFixed(1)} / 5</strong>
+                  <span className="muted">
+                    from {form.reviewCount} rating{Number(form.reviewCount) === 1 ? '' : 's'}
+                  </span>
+                </>
+              ) : (
+                <span className="muted">No ratings yet</span>
+              )}
+              <Link className="link" to={`/reviews?product=${id}`}>See reviews</Link>
+            </div>
+            <span className="small muted">Set by customers who received the product. It cannot be edited here.</span>
           </div>
-          <div className="field">
-            <label htmlFor="reviewCount">Number of reviews</label>
-            <input id="reviewCount" type="number" min="0" value={form.reviewCount} onChange={setField('reviewCount')} />
-          </div>
-        </div>
+        )}
 
         <div className="field checkbox">
           <input id="isAvailable" type="checkbox" checked={form.isAvailable} onChange={setField('isAvailable')} />
