@@ -5,7 +5,7 @@ import Loader from '../components/Loader';
 import Pagination from '../components/Pagination';
 import EmptyState from '../components/EmptyState';
 import { useToast } from '../context/ToastContext';
-import { formatDay, formatNpr, timeAgo } from '../utils/format';
+import { formatDate, formatDay, formatNpr, timeAgo } from '../utils/format';
 
 export default function UsersPage() {
   const toast = useToast();
@@ -111,7 +111,16 @@ export default function UsersPage() {
                     <td className="small">{user.phone || '—'}</td>
                     <td className="num">{user.orders || <span className="muted">0</span>}</td>
                     <td className="num">{user.spent ? <strong>{formatNpr(user.spent)}</strong> : <span className="muted">—</span>}</td>
-                    <td className="small muted">{user.lastOrderAt ? timeAgo(user.lastOrderAt) : 'Never'}</td>
+                    <td className="small nowrap">
+                      {user.lastOrderAt ? (
+                        <span title={formatDate(user.lastOrderAt)}>
+                          {formatDay(user.lastOrderAt)}
+                          <span className="muted"> · {timeAgo(user.lastOrderAt)}</span>
+                        </span>
+                      ) : (
+                        <span className="muted">No orders yet</span>
+                      )}
+                    </td>
                     <td className="small muted">{formatDay(user.createdAt)}</td>
                     <td>
                       <span className={`badge ${user.isBlocked ? 'danger' : 'ok'}`}>

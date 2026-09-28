@@ -119,7 +119,9 @@ export default function CustomerDetailPage() {
         <div className="stat">
           <div className="label">Last order</div>
           <div className="value">{summary.lastOrderAt ? timeAgo(summary.lastOrderAt) : '—'}</div>
-          <div className="foot">{summary.firstOrderAt ? `First ordered ${formatDay(summary.firstOrderAt)}` : 'Has not ordered yet'}</div>
+          <div className="foot">
+            {summary.lastOrderAt ? `${formatDate(summary.lastOrderAt)} · first ${formatDay(summary.firstOrderAt)}` : 'Has not ordered yet'}
+          </div>
         </div>
       </div>
 
