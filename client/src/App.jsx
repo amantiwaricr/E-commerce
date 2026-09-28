@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 
 import ShopLayout from './components/ShopLayout';
 import Toaster from './components/Toaster';
+import ScrollManager from './components/ScrollManager';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import HomePage from './pages/HomePage';
@@ -22,6 +23,7 @@ import NotFoundPage from './pages/NotFoundPage';
 export default function App() {
   return (
     <>
+      <ScrollManager />
       <Routes>
         <Route element={<ShopLayout />}>
           {/* The reference carries one header across every page, landing included. */}

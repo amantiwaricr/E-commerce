@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Toaster from './components/Toaster';
+import ScrollManager from './components/ScrollManager';
 import EmptyState from './components/EmptyState';
 
 import LoginPage from './pages/LoginPage';
@@ -20,6 +21,7 @@ import SettingsPage from './pages/SettingsPage';
 export default function App() {
   return (
     <>
+      <ScrollManager />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
 
